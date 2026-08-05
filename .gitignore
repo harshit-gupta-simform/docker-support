@@ -42,3 +42,6 @@ pnpm-debug.log*
 # temp directories
 tmp/
 temp/
+
+# superpowers scratch workspaces
+.superpowers/
