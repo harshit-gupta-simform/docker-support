@@ -47,6 +47,7 @@ describe('registerProcessCrashHandlers', () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- expect.any() is typed `any` by @types/jest
       expect.objectContaining({ err: expect.any(Error) }),
       'Unhandled promise rejection',
+      'Bootstrap',
     );
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
@@ -60,6 +61,7 @@ describe('registerProcessCrashHandlers', () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- expect.any() is typed `any` by @types/jest
       expect.objectContaining({ err: expect.any(Error) }),
       'Uncaught exception',
+      'Bootstrap',
     );
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
