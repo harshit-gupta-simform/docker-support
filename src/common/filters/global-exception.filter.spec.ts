@@ -1,6 +1,7 @@
 import { ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { PinoLogger } from 'nestjs-pino';
+import { Test } from '@nestjs/testing';
 import { GlobalExceptionFilter } from './global-exception.filter';
 
 function createHost(request: Partial<Request>, response: Partial<Response>) {
@@ -71,5 +72,23 @@ describe('GlobalExceptionFilter', () => {
       expect.objectContaining({ path: '/some-path' }),
       'Unhandled exception',
     );
+  });
+});
+
+describe('GlobalExceptionFilter (DI resolution)', () => {
+  it('is resolved by the Nest DI container when registered via APP_FILTER', async () => {
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        GlobalExceptionFilter,
+        {
+          provide: PinoLogger,
+          useValue: { setContext: jest.fn(), error: jest.fn() },
+        },
+      ],
+    }).compile();
+
+    const filter = moduleRef.get(GlobalExceptionFilter);
+
+    expect(filter).toBeInstanceOf(GlobalExceptionFilter);
   });
 });
