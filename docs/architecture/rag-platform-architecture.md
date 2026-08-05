@@ -127,6 +127,10 @@ docker-support/
 
 **App-to-context mapping**: `apps/api` composes Retrieval + Generation + Conversation with adapters wired via DI; its admin endpoints enqueue ingestion jobs but never execute ingestion inline. `apps/ingestion-worker` hosts `@Processor()`/`WorkerHost` classes (from `@nestjs/bullmq`) consuming the ingestion queues end-to-end. The two scale independently — ingestion bursts during re-crawls, the API stays available regardless.
 
+### Current status: flat structure (as of 2026-08-05)
+
+This project currently lives as a single flat NestJS app at the repository root — the `apps/`/`libs/` pnpm-workspace split described above has not been implemented yet. This was a deliberate decision made during the initial production-readiness hardening pass following the first scaffolding pass: restructuring into the monorepo before any real domain code (ingestion, retrieval, generation) exists would mean moving files based on a structure with no content yet to validate it against. The restructure is deferred until ingestion/retrieval code is actually being built — at that point, this app becomes `apps/api` per the structure above.
+
 ---
 
 ## 5. Required npm Packages
