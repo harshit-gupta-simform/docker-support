@@ -1,19 +1,25 @@
 import { NestFactory } from '@nestjs/core';
-import { ConfigService } from '@nestjs/config';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
-import { EnvConfig } from './config/env.validation';
+import { AppConfigService } from './config/app-config.service';
+import { registerGracefulShutdown } from './bootstrap/register-shutdown-hooks';
+import { registerProcessCrashHandlers } from './bootstrap/register-process-crash-handlers';
+
+const SHUTDOWN_TIMEOUT_MS = 10_000;
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const logger = app.get(Logger);
 
-  app.useLogger(app.get(Logger));
+  app.useLogger(logger);
   app.enableShutdownHooks();
 
-  const configService = app.get(ConfigService<EnvConfig, true>);
-  const port = configService.get('PORT', { infer: true });
+  registerProcessCrashHandlers(logger);
+  registerGracefulShutdown(app, logger, SHUTDOWN_TIMEOUT_MS);
 
-  await app.listen(port);
+  const appConfig = app.get(AppConfigService);
+
+  await app.listen(appConfig.port);
 }
 
 void bootstrap();
