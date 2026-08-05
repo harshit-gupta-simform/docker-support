@@ -23,6 +23,22 @@ describe('AppController (e2e)', () => {
       .expect('Hello World!');
   });
 
+  it('returns the global filter error shape for unmapped routes', () => {
+    return request(app.getHttpServer())
+      .get('/does-not-exist')
+      .expect(404)
+      .expect((res) => {
+        const body = res.body as {
+          statusCode: number;
+          path: string;
+          timestamp: string;
+        };
+        expect(body.statusCode).toBe(404);
+        expect(body.path).toBe('/does-not-exist');
+        expect(body.timestamp).toEqual(expect.any(String));
+      });
+  });
+
   afterEach(async () => {
     await app.close();
   });
