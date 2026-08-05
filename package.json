@@ -5,6 +5,10 @@
   "author": "",
   "private": true,
   "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "packageManager": "pnpm@10.33.2",
   "scripts": {
     "prepare": "husky",
     "build": "nest build",
