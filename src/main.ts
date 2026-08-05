@@ -12,10 +12,10 @@ async function bootstrap(): Promise<void> {
   const logger = app.get(Logger);
 
   app.useLogger(logger);
-  app.enableShutdownHooks();
+  app.enableShutdownHooks([], { useProcessExit: true });
 
   registerProcessCrashHandlers(logger);
-  registerGracefulShutdown(app, logger, SHUTDOWN_TIMEOUT_MS);
+  registerGracefulShutdown(logger, SHUTDOWN_TIMEOUT_MS);
 
   const appConfig = app.get(AppConfigService);
 

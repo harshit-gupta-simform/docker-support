@@ -4,7 +4,6 @@ describe('registerGracefulShutdown', () => {
   let onSpy: jest.SpiedFunction<typeof process.on>;
   let exitSpy: jest.SpiedFunction<typeof process.exit>;
   let logger: { log: jest.Mock; error: jest.Mock };
-  let app: { close: jest.Mock };
 
   beforeEach(() => {
     jest.useFakeTimers();
@@ -13,7 +12,6 @@ describe('registerGracefulShutdown', () => {
       .spyOn(process, 'exit')
       .mockImplementation(() => undefined as never);
     logger = { log: jest.fn(), error: jest.fn() };
-    app = { close: jest.fn() };
   });
 
   afterEach(() => {
@@ -30,30 +28,27 @@ describe('registerGracefulShutdown', () => {
   }
 
   it('registers handlers for SIGTERM and SIGINT', () => {
-    registerGracefulShutdown(app as never, logger as never, 10000);
+    registerGracefulShutdown(logger as never, 10000);
 
     expect(onSpy).toHaveBeenCalledWith('SIGTERM', expect.any(Function));
     expect(onSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
   });
 
-  it('exits 0 once app.close() resolves before the deadline', async () => {
-    app.close.mockResolvedValue(undefined);
-    registerGracefulShutdown(app as never, logger as never, 10000);
-
-    getHandler('SIGTERM')();
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect(exitSpy).toHaveBeenCalledWith(0);
-  });
-
-  it('force-exits 1 if app.close() has not resolved within the deadline', () => {
-    app.close.mockReturnValue(new Promise(() => {}));
-    registerGracefulShutdown(app as never, logger as never, 10000);
+  it('force-exits 1 if the process has not exited within the deadline', () => {
+    registerGracefulShutdown(logger as never, 10000);
 
     getHandler('SIGTERM')();
     jest.advanceTimersByTime(10000);
 
     expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('ignores a second signal received while already shutting down', () => {
+    registerGracefulShutdown(logger as never, 10000);
+
+    getHandler('SIGTERM')();
+    getHandler('SIGINT')();
+
+    expect(logger.log).toHaveBeenCalledTimes(1);
   });
 });
