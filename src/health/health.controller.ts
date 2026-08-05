@@ -1,6 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
 import {
-  DiskHealthIndicator,
   HealthCheck,
   HealthCheckService,
   MemoryHealthIndicator,
@@ -8,27 +7,30 @@ import {
 
 const HEAP_THRESHOLD_BYTES = 300 * 1024 * 1024;
 const RSS_THRESHOLD_BYTES = 300 * 1024 * 1024;
-const DISK_THRESHOLD_PERCENT = 0.9;
 
 @Controller('health')
 export class HealthController {
   constructor(
     private readonly health: HealthCheckService,
     private readonly memory: MemoryHealthIndicator,
-    private readonly disk: DiskHealthIndicator,
   ) {}
 
-  @Get()
+  @Get('live')
   @HealthCheck()
-  check() {
+  live() {
+    return this.runChecks();
+  }
+
+  @Get('ready')
+  @HealthCheck()
+  ready() {
+    return this.runChecks();
+  }
+
+  private runChecks() {
     return this.health.check([
       () => this.memory.checkHeap('memory_heap', HEAP_THRESHOLD_BYTES),
       () => this.memory.checkRSS('memory_rss', RSS_THRESHOLD_BYTES),
-      () =>
-        this.disk.checkStorage('disk', {
-          path: '/',
-          thresholdPercent: DISK_THRESHOLD_PERCENT,
-        }),
     ]);
   }
 }
