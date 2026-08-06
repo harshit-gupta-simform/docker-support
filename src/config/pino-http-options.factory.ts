@@ -5,6 +5,9 @@ import { AppConfigService } from './app-config.service';
 // (e.g. a future API-key header for admin endpoints).
 const REDACT_PATHS = ['req.headers.authorization', 'req.headers.cookie'];
 
+// pino-pretty must stay a production dependency (not dev-only): this
+// factory loads it as a runtime transport whenever NODE_ENV isn't
+// 'production', and NODE_ENV defaults to 'development' if unset.
 export function buildPinoHttpOptions(appConfig: AppConfigService): Options {
   return {
     level: appConfig.logLevel,
