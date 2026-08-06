@@ -1,3 +1,6 @@
+import { Writable } from 'node:stream';
+import { Logger, PinoLogger } from 'nestjs-pino';
+import { __resetOutOfContextForTests } from 'nestjs-pino/PinoLogger';
 import { registerProcessCrashHandlers } from './register-process-crash-handlers';
 
 describe('registerProcessCrashHandlers', () => {
@@ -64,5 +67,30 @@ describe('registerProcessCrashHandlers', () => {
       'Bootstrap',
     );
     expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('emits a real log line with the message and context in the correct fields', () => {
+    __resetOutOfContextForTests();
+
+    const chunks: Buffer[] = [];
+    const stream = new Writable({
+      write(chunk, _encoding, callback) {
+        chunks.push(Buffer.from(chunk as Buffer));
+        callback();
+      },
+    });
+
+    const pinoLogger = new PinoLogger({ pinoHttp: stream });
+    const realLogger = new Logger(pinoLogger, {});
+
+    registerProcessCrashHandlers(realLogger);
+
+    getHandler('unhandledRejection')(new Error('boom'));
+
+    const output = Buffer.concat(chunks).toString('utf-8').trim();
+    const parsed = JSON.parse(output) as { msg: string; context: string };
+
+    expect(parsed.msg).toBe('Unhandled promise rejection');
+    expect(parsed.context).toBe('Bootstrap');
   });
 });
