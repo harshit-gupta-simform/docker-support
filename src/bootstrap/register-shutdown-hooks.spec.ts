@@ -38,6 +38,9 @@ describe('registerGracefulShutdown', () => {
     registerGracefulShutdown(logger as never, 10000);
 
     getHandler('SIGTERM')();
+
+    expect(exitSpy).not.toHaveBeenCalled();
+
     jest.advanceTimersByTime(10000);
 
     expect(exitSpy).toHaveBeenCalledWith(1);
