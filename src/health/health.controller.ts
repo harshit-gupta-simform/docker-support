@@ -1,6 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import {
   HealthCheck,
+  HealthCheckResult,
   HealthCheckService,
   MemoryHealthIndicator,
 } from '@nestjs/terminus';
@@ -17,17 +18,17 @@ export class HealthController {
 
   @Get('live')
   @HealthCheck()
-  live() {
+  live(): Promise<HealthCheckResult> {
     return this.runChecks();
   }
 
   @Get('ready')
   @HealthCheck()
-  ready() {
+  ready(): Promise<HealthCheckResult> {
     return this.runChecks();
   }
 
-  private runChecks() {
+  private runChecks(): Promise<HealthCheckResult> {
     return this.health.check([
       () => this.memory.checkHeap('memory_heap', HEAP_THRESHOLD_BYTES),
       () => this.memory.checkRSS('memory_rss', RSS_THRESHOLD_BYTES),
