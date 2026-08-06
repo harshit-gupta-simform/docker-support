@@ -1,5 +1,10 @@
 import type { Logger } from 'nestjs-pino';
 
+// Single source of truth for shutdown signals: consumed both by the watchdog
+// below and by app.enableShutdownHooks() in main.ts. Deliberately narrower than
+// Nest's full ShutdownSignal enum — SIGHUP/SIGQUIT/SIGUSR2 and the fault signals
+// (SIGSEGV/SIGABRT/...) are left to Node's default disposition. Adding a signal
+// here changes BOTH the force-exit watchdog and Nest's lifecycle-hook coverage.
 export const SHUTDOWN_SIGNALS: NodeJS.Signals[] = ['SIGTERM', 'SIGINT'];
 
 export function registerGracefulShutdown(

@@ -57,7 +57,7 @@ After all items: run `pnpm run build`, `pnpm run lint`, `pnpm run test`, `pnpm r
 
 ## Documentation
 
-No README or architecture-doc changes are needed — none of these 5 items change externally-observable behavior, environment variables, scripts, or endpoints. (Item 3's comment lives in code, not docs, since it's an implementation-detail constraint for future maintainers of that one class, not user-facing documentation.)
+No README changes are needed — nothing here changes environment variables, scripts, or endpoints. The architecture doc doesn't need a change either, but one caveat is worth recording here for anyone auditing shutdown behavior later: Item 1 does change real behavior for signals other than SIGTERM/SIGINT — they previously ran Nest's full lifecycle-hook sequence (via `enableShutdownHooks([])` covering all of Nest's `ShutdownSignal` enum) and exited 0, and now hit Node's default disposition instead (immediate termination, no hooks run, no pino-transport flush). This was the user's explicit, approved choice — SIGTERM/SIGINT are what actually matters for this deployment, and attempting graceful async cleanup on fault signals like SIGSEGV/SIGABRT is discouraged practice anyway. (Item 3's comment lives in code, not docs, since it's an implementation-detail constraint for future maintainers of that one class, not user-facing documentation.)
 
 ## Out of Scope
 

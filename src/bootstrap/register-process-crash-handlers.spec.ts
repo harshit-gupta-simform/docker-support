@@ -9,6 +9,7 @@ describe('registerProcessCrashHandlers', () => {
   let logger: { error: jest.Mock };
 
   beforeEach(() => {
+    __resetOutOfContextForTests();
     onSpy = jest.spyOn(process, 'on').mockImplementation(() => process);
     exitSpy = jest
       .spyOn(process, 'exit')
@@ -18,6 +19,7 @@ describe('registerProcessCrashHandlers', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+    __resetOutOfContextForTests();
   });
 
   function getHandler(event: string): (...args: unknown[]) => void {
@@ -70,8 +72,6 @@ describe('registerProcessCrashHandlers', () => {
   });
 
   it('emits a real log line with the message and context in the correct fields', () => {
-    __resetOutOfContextForTests();
-
     const chunks: Buffer[] = [];
     const stream = new Writable({
       write(chunk, _encoding, callback) {
