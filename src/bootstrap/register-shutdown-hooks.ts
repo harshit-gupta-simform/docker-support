@@ -1,6 +1,6 @@
 import type { Logger } from 'nestjs-pino';
 
-const SHUTDOWN_SIGNALS: NodeJS.Signals[] = ['SIGTERM', 'SIGINT'];
+export const SHUTDOWN_SIGNALS: NodeJS.Signals[] = ['SIGTERM', 'SIGINT'];
 
 export function registerGracefulShutdown(
   logger: Logger,
