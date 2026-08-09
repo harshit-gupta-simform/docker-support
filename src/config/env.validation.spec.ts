@@ -8,6 +8,11 @@ describe('validateEnv', () => {
       NODE_ENV: 'development',
       PORT: 3000,
       LOG_LEVEL: 'info',
+      INGESTION_OUTPUT_DIR: './data/ingestion-output',
+      INGESTION_MAX_ENTRY_COUNT: 10000,
+      INGESTION_MAX_UNCOMPRESSED_BYTES: 524288000,
+      INGESTION_INCLUDE_GLOB: '**/*.md',
+      INGESTION_DEFAULT_LANGUAGE: 'en',
     });
   });
 
@@ -22,12 +27,22 @@ describe('validateEnv', () => {
       NODE_ENV: 'production',
       PORT: '8080',
       LOG_LEVEL: 'debug',
+      INGESTION_OUTPUT_DIR: '/data/out',
+      INGESTION_MAX_ENTRY_COUNT: '5000',
+      INGESTION_MAX_UNCOMPRESSED_BYTES: '1000000',
+      INGESTION_INCLUDE_GLOB: '**/*.mdx',
+      INGESTION_DEFAULT_LANGUAGE: 'fr',
     });
 
     expect(result).toEqual({
       NODE_ENV: 'production',
       PORT: 8080,
       LOG_LEVEL: 'debug',
+      INGESTION_OUTPUT_DIR: '/data/out',
+      INGESTION_MAX_ENTRY_COUNT: 5000,
+      INGESTION_MAX_UNCOMPRESSED_BYTES: 1000000,
+      INGESTION_INCLUDE_GLOB: '**/*.mdx',
+      INGESTION_DEFAULT_LANGUAGE: 'fr',
     });
   });
 

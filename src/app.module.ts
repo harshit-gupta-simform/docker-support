@@ -6,6 +6,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { HealthModule } from './health/health.module';
+import { IngestionModule } from './ingestion/ingestion.module';
 import { validateEnv } from './config/env.validation';
 import { AppConfigService } from './config/app-config.service';
 import { buildPinoHttpOptions } from './config/pino-http-options.factory';
@@ -25,6 +26,7 @@ import { buildPinoHttpOptions } from './config/pino-http-options.factory';
       }),
     }),
     HealthModule,
+    IngestionModule,
   ],
   controllers: [AppController],
   providers: [
