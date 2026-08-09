@@ -30,7 +30,7 @@
 ### Core entities / aggregates / value objects
 
 - **`KnowledgeDomain`** (aggregate root, Registry): `id`, `displayName`, `description`, `source: {loaderAdapterKey, loaderConfig}`, `chunking: {strategy, chunkSize, chunkOverlap}`, `embedding: {providerKey, model, dimensions}`, `vectorStore: {collectionName, distanceMetric}`, `retrievalDefaults: {topK, scoreThreshold, filters}`, `status`, `version`.
-- **`Document`** (Ingestion): `id`, `domainId`, `sourceUri`, `contentHash`, `title`, `sourceMetadata`, `ingestedAt`, `version`.
+- **`Document`** (Ingestion): `id`, `domainId`, `sourceUri`, `contentHash`, `title`, `content` (JSONB — full structured output: metadata, body text, headings, code blocks; see [`document-ingestion-subsystem-design.md`](./document-ingestion-subsystem-design.md) for the shape), `ingestedAt`, `version`, `status` (`pending`/`processed`/`stale`/`failed`).
 - **`Chunk`**: `id`, `documentId`, `domainId`, `text`, `tokenCount`, `position`, `embeddingVectorId`, `metadata` (heading/section path).
 - **`IngestionJob`**: tracking entity (status, attempt count) mirrored alongside the BullMQ job for observability/reconciliation.
 - **`Query`** (VO): `text`, `domainId`, `filters`, `topK`. **`RankedChunk`**: chunk ref + score.
