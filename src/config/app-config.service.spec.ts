@@ -3,8 +3,22 @@ import { ConfigService } from '@nestjs/config';
 import { AppConfigService } from './app-config.service';
 import { EnvConfig } from './env.validation';
 
+const DEFAULT_ENV_CONFIG: EnvConfig = {
+  NODE_ENV: 'development',
+  PORT: 3000,
+  LOG_LEVEL: 'info',
+  INGESTION_OUTPUT_DIR: './data/ingestion-output',
+  INGESTION_MAX_ENTRY_COUNT: 10000,
+  INGESTION_MAX_UNCOMPRESSED_BYTES: 524288000,
+  INGESTION_INCLUDE_GLOB: '**/*.md',
+  INGESTION_DEFAULT_LANGUAGE: 'en',
+};
+
 describe('AppConfigService', () => {
-  async function createService(config: EnvConfig): Promise<AppConfigService> {
+  async function createService(
+    overrides: Partial<EnvConfig>,
+  ): Promise<AppConfigService> {
+    const config: EnvConfig = { ...DEFAULT_ENV_CONFIG, ...overrides };
     const moduleRef = await Test.createTestingModule({
       providers: [
         AppConfigService,
