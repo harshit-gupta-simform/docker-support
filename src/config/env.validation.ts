@@ -8,6 +8,15 @@ export const envSchema = z.object({
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
     .default('info'),
+  INGESTION_OUTPUT_DIR: z.string().min(1).default('./data/ingestion-output'),
+  INGESTION_MAX_ENTRY_COUNT: z.coerce.number().int().positive().default(10000),
+  INGESTION_MAX_UNCOMPRESSED_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(524288000),
+  INGESTION_INCLUDE_GLOB: z.string().min(1).default('**/*.md'),
+  INGESTION_DEFAULT_LANGUAGE: z.string().min(1).default('en'),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

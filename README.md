@@ -16,11 +16,16 @@ The app starts on the port configured in `.env` (default `3000`).
 
 ## Environment variables
 
-| Variable    | Default       | Description                                                                                                                           |
-| ----------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`  | `development` | `development`, `production`, or `test`. Controls log formatting (pretty outside production) and other environment-dependent behavior. |
-| `PORT`      | `3000`        | HTTP port the app listens on.                                                                                                         |
-| `LOG_LEVEL` | `info`        | Pino log level: `fatal`, `error`, `warn`, `info`, `debug`, `trace`, or `silent`.                                                      |
+| Variable                           | Default                   | Description                                                                                                                           |
+| ---------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                         | `development`             | `development`, `production`, or `test`. Controls log formatting (pretty outside production) and other environment-dependent behavior. |
+| `PORT`                             | `3000`                    | HTTP port the app listens on.                                                                                                         |
+| `LOG_LEVEL`                        | `info`                    | Pino log level: `fatal`, `error`, `warn`, `info`, `debug`, `trace`, or `silent`.                                                      |
+| `INGESTION_OUTPUT_DIR`             | `./data/ingestion-output` | Directory where ingested `StructuredDocument` JSON files are written.                                                                 |
+| `INGESTION_MAX_ENTRY_COUNT`        | `10000`                   | Zip-bomb guard: max number of entries an archive may declare before extraction is refused.                                            |
+| `INGESTION_MAX_UNCOMPRESSED_BYTES` | `524288000`               | Zip-bomb guard: max total uncompressed bytes an archive may contain (default 500 MB).                                                 |
+| `INGESTION_INCLUDE_GLOB`           | `**/*.md`                 | Glob pattern selecting which archive entries are treated as documents.                                                                |
+| `INGESTION_DEFAULT_LANGUAGE`       | `en`                      | Fallback `language` metadata value when a document's front matter doesn't specify one.                                                |
 
 All environment variables are validated at boot via a zod schema (`src/config/env.validation.ts`) — the app fails fast with a descriptive error if configuration is missing or invalid, rather than failing later at first use.
 
