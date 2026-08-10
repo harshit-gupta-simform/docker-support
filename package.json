@@ -17,6 +17,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
+    "ingest": "node dist/cli/ingest.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -94,7 +95,8 @@
     "collectCoverageFrom": [
       "**/*.(t|j)s",
       "!main.ts",
-      "!**/*.module.ts"
+      "!**/*.module.ts",
+      "!cli/**"
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",

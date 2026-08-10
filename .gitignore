@@ -43,5 +43,8 @@ pnpm-debug.log*
 tmp/
 temp/
 
+# generated ingestion/chunking output (INGESTION_OUTPUT_DIR, CHUNKING_OUTPUT_DIR defaults)
+/data/
+
 # superpowers scratch workspaces
 .superpowers/
