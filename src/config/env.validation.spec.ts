@@ -13,6 +13,13 @@ describe('validateEnv', () => {
       INGESTION_MAX_UNCOMPRESSED_BYTES: 524288000,
       INGESTION_INCLUDE_GLOB: '**/*.md',
       INGESTION_DEFAULT_LANGUAGE: 'en',
+      CHUNKING_MAX_CHUNK_SIZE: 500,
+      CHUNKING_MIN_CHUNK_SIZE: 100,
+      CHUNKING_LENGTH_STRATEGY: 'approx-token',
+      CHUNKING_OVERLAP_STRATEGY: 'heading-context',
+      CHUNKING_OVERLAP_SENTENCES: 1,
+      CHUNKING_INCLUDE_PARENT_CHUNKS: true,
+      CHUNKING_OUTPUT_DIR: './data/chunks-output',
     });
   });
 
@@ -32,6 +39,13 @@ describe('validateEnv', () => {
       INGESTION_MAX_UNCOMPRESSED_BYTES: '1000000',
       INGESTION_INCLUDE_GLOB: '**/*.mdx',
       INGESTION_DEFAULT_LANGUAGE: 'fr',
+      CHUNKING_MAX_CHUNK_SIZE: '600',
+      CHUNKING_MIN_CHUNK_SIZE: '150',
+      CHUNKING_LENGTH_STRATEGY: 'word',
+      CHUNKING_OVERLAP_STRATEGY: 'sentence-overlap',
+      CHUNKING_OVERLAP_SENTENCES: '2',
+      CHUNKING_INCLUDE_PARENT_CHUNKS: 'false',
+      CHUNKING_OUTPUT_DIR: '/data/chunks-out',
     });
 
     expect(result).toEqual({
@@ -43,6 +57,13 @@ describe('validateEnv', () => {
       INGESTION_MAX_UNCOMPRESSED_BYTES: 1000000,
       INGESTION_INCLUDE_GLOB: '**/*.mdx',
       INGESTION_DEFAULT_LANGUAGE: 'fr',
+      CHUNKING_MAX_CHUNK_SIZE: 600,
+      CHUNKING_MIN_CHUNK_SIZE: 150,
+      CHUNKING_LENGTH_STRATEGY: 'word',
+      CHUNKING_OVERLAP_STRATEGY: 'sentence-overlap',
+      CHUNKING_OVERLAP_SENTENCES: 2,
+      CHUNKING_INCLUDE_PARENT_CHUNKS: false,
+      CHUNKING_OUTPUT_DIR: '/data/chunks-out',
     });
   });
 
@@ -56,5 +77,14 @@ describe('validateEnv', () => {
     expect(() => validateEnv({ PORT: 'not-a-number' })).toThrow(
       /Invalid environment configuration/,
     );
+  });
+
+  it('throws when CHUNKING_MIN_CHUNK_SIZE is not less than CHUNKING_MAX_CHUNK_SIZE', () => {
+    expect(() =>
+      validateEnv({
+        CHUNKING_MIN_CHUNK_SIZE: '500',
+        CHUNKING_MAX_CHUNK_SIZE: '500',
+      }),
+    ).toThrow(/Invalid environment configuration/);
   });
 });

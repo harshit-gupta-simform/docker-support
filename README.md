@@ -26,6 +26,13 @@ The app starts on the port configured in `.env` (default `3000`).
 | `INGESTION_MAX_UNCOMPRESSED_BYTES` | `524288000`               | Zip-bomb guard: max total uncompressed bytes an archive may contain (default 500 MB).                                                 |
 | `INGESTION_INCLUDE_GLOB`           | `**/*.md`                 | Glob pattern selecting which archive entries are treated as documents.                                                                |
 | `INGESTION_DEFAULT_LANGUAGE`       | `en`                      | Fallback `language` metadata value when a document's front matter doesn't specify one.                                                |
+| `CHUNKING_MAX_CHUNK_SIZE`          | `500`                     | Upper size bound (in `CHUNKING_LENGTH_STRATEGY` units) before a section is split into multiple chunks.                                |
+| `CHUNKING_MIN_CHUNK_SIZE`          | `100`                     | Lower size bound before a section is merged with an adjacent, equally undersized sibling section.                                     |
+| `CHUNKING_LENGTH_STRATEGY`         | `approx-token`            | How chunk size is measured: `char`, `word`, or `approx-token` (~4 characters per token).                                              |
+| `CHUNKING_OVERLAP_STRATEGY`        | `heading-context`         | How split pieces of an oversized section stay contextualized: `none`, `heading-context` (a breadcrumb), or `sentence-overlap`.        |
+| `CHUNKING_OVERLAP_SENTENCES`       | `1`                       | Sentences duplicated between split pieces when `CHUNKING_OVERLAP_STRATEGY=sentence-overlap`.                                          |
+| `CHUNKING_INCLUDE_PARENT_CHUNKS`   | `true`                    | Whether to also emit one full-section `'parent'`-type chunk per section, for parent-document retrieval.                               |
+| `CHUNKING_OUTPUT_DIR`              | `./data/chunks-output`    | Directory where chunked `Chunk[]` JSON files are written.                                                                             |
 
 All environment variables are validated at boot via a zod schema (`src/config/env.validation.ts`) — the app fails fast with a descriptive error if configuration is missing or invalid, rather than failing later at first use.
 
