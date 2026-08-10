@@ -3,7 +3,12 @@ import { ContentBlockType } from './chunking.types';
 
 type Token = MarkdownIt.Token;
 
-const NOTE_PATTERN = /^\s*\*{0,2}(note|warning|important|caution|tip)\b/i;
+// Matches both the older `> **Note:**` bold-text admonition convention and
+// GitHub-Flavored-Markdown alert syntax (`> [!NOTE]`, `> [!WARNING]`, etc.)
+// — the latter is what Docker's real, current documentation uses throughout;
+// the bold-text-only pattern had ~0% recall against real fetched pages.
+const NOTE_PATTERN =
+  /^\s*(?:\[!(?:note|warning|important|caution|tip)\]|\*{0,2}(?:note|warning|important|caution|tip)\b)/i;
 
 export interface ClassifiedRange {
   type: ContentBlockType;

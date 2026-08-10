@@ -48,6 +48,61 @@ describe('classifyRange', () => {
     expect(result?.type).toBe('note');
   });
 
+  // GFM alert syntax (`> [!NOTE]`, `> [!WARNING]`, etc.) is the convention
+  // Docker's real, current documentation uses throughout — confirmed by
+  // running real fetched docs.docker.com pages through this classifier and
+  // finding 0% recall against the old bold-text-only pattern.
+  it('classifies a GFM [!NOTE] alert blockquote as note', () => {
+    const tokens = markdownIt.parse('> [!NOTE]\n>\n> Some text here.\n', {});
+    const openIndex = tokens.findIndex((t) => t.type === 'blockquote_open');
+    const result = classifyRange(tokens, openIndex);
+
+    expect(result?.type).toBe('note');
+  });
+
+  it('classifies a GFM [!WARNING] alert blockquote as note', () => {
+    const tokens = markdownIt.parse('> [!WARNING]\n>\n> Be careful.\n', {});
+    const openIndex = tokens.findIndex((t) => t.type === 'blockquote_open');
+    const result = classifyRange(tokens, openIndex);
+
+    expect(result?.type).toBe('note');
+  });
+
+  it('classifies a GFM [!TIP] alert blockquote as note', () => {
+    const tokens = markdownIt.parse('> [!TIP]\n>\n> A helpful tip.\n', {});
+    const openIndex = tokens.findIndex((t) => t.type === 'blockquote_open');
+    const result = classifyRange(tokens, openIndex);
+
+    expect(result?.type).toBe('note');
+  });
+
+  it('classifies a GFM [!IMPORTANT] alert blockquote as note', () => {
+    const tokens = markdownIt.parse(
+      '> [!IMPORTANT]\n>\n> Pay attention.\n',
+      {},
+    );
+    const openIndex = tokens.findIndex((t) => t.type === 'blockquote_open');
+    const result = classifyRange(tokens, openIndex);
+
+    expect(result?.type).toBe('note');
+  });
+
+  it('classifies a GFM [!CAUTION] alert blockquote as note', () => {
+    const tokens = markdownIt.parse('> [!CAUTION]\n>\n> Risky.\n', {});
+    const openIndex = tokens.findIndex((t) => t.type === 'blockquote_open');
+    const result = classifyRange(tokens, openIndex);
+
+    expect(result?.type).toBe('note');
+  });
+
+  it('classifies a lowercase GFM [!note] alert blockquote as note (case-insensitive)', () => {
+    const tokens = markdownIt.parse('> [!note]\n>\n> Some text.\n', {});
+    const openIndex = tokens.findIndex((t) => t.type === 'blockquote_open');
+    const result = classifyRange(tokens, openIndex);
+
+    expect(result?.type).toBe('note');
+  });
+
   it('classifies a plain, non-admonition blockquote as paragraph', () => {
     const tokens = markdownIt.parse('> just a quote\n', {});
     const openIndex = tokens.findIndex((t) => t.type === 'blockquote_open');

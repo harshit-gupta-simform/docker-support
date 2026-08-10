@@ -6,17 +6,23 @@ function buildLogger(): { setContext: jest.Mock } {
   return { setContext: jest.fn() };
 }
 
+function buildMeasurer(): { measure: (text: string) => number } {
+  return { measure: (text: string) => text.length };
+}
+
 function buildConfig(
   overrides: Partial<{
     includeParentChunks: boolean;
     overlapStrategy: 'none' | 'heading-context' | 'sentence-overlap';
     overlapSentences: number;
+    maxChunkSize: number;
   }> = {},
 ): ChunkingConfigService {
   return {
     includeParentChunks: overrides.includeParentChunks ?? true,
     overlapStrategy: overrides.overlapStrategy ?? 'heading-context',
     overlapSentences: overrides.overlapSentences ?? 1,
+    maxChunkSize: overrides.maxChunkSize ?? 500,
   } as ChunkingConfigService;
 }
 
@@ -54,6 +60,7 @@ function pieceFor(
 describe('ChunkAssemblerService', () => {
   it('assembles one child chunk per resolved piece with correct metadata', () => {
     const service = new ChunkAssemblerService(
+      buildMeasurer(),
       buildConfig(),
       buildLogger() as never,
     );
@@ -81,6 +88,7 @@ describe('ChunkAssemblerService', () => {
 
   it('links previousChunkId/nextChunkId across the whole document in reading order', () => {
     const service = new ChunkAssemblerService(
+      buildMeasurer(),
       buildConfig(),
       buildLogger() as never,
     );
@@ -111,6 +119,7 @@ describe('ChunkAssemblerService', () => {
 
   it('emits one parent chunk per section when includeParentChunks is true, always with null parentChunkId', () => {
     const service = new ChunkAssemblerService(
+      buildMeasurer(),
       buildConfig({ includeParentChunks: true }),
       buildLogger() as never,
     );
@@ -136,8 +145,92 @@ describe('ChunkAssemblerService', () => {
     expect(parentChunks[0]?.relationships.nextChunkId).toBeNull();
   });
 
+  it('computes parent-chunk length via the injected LengthMeasurerPort, not raw character count', () => {
+    // Regression test for a bug found via real-data validation: parent
+    // chunks were using fullText.length (character count) directly instead
+    // of the configured length strategy, making parent/child lengths
+    // inconsistent units and masking truly oversized parent chunks.
+    const stubMeasurer = { measure: (text: string) => text.length / 4 };
+    const service = new ChunkAssemblerService(
+      stubMeasurer,
+      buildConfig({ includeParentChunks: true }),
+      buildLogger() as never,
+    );
+    const sectionA = sectionOf('A');
+    const root: Section = {
+      headingText: '',
+      headingLevel: 0,
+      anchor: '',
+      headingPath: [],
+      blocks: [],
+      children: [sectionA],
+    };
+    const pieces = [pieceFor(sectionA)];
+
+    const chunks = service.assemble(pieces, root, 'doc1', 'a.md', 'A Doc');
+    const parentChunk = chunks.find((c) => c.metadata.chunkType === 'parent')!;
+
+    expect(parentChunk.metadata.length).toBe(parentChunk.text.length / 4);
+    expect(parentChunk.metadata.length).not.toBe(parentChunk.text.length);
+  });
+
+  it('flags a parent chunk as exceedsMaxSize when its length is over maxChunkSize', () => {
+    // sectionA's fullText is just its heading line "## A" (4 characters) —
+    // it has no own blocks and no children — so maxChunkSize must be below
+    // 4 to actually trigger the oversized flag.
+    const stubMeasurer = { measure: (text: string) => text.length };
+    const service = new ChunkAssemblerService(
+      stubMeasurer,
+      buildConfig({ includeParentChunks: true, maxChunkSize: 2 }),
+      buildLogger() as never,
+    );
+    const sectionA = sectionOf('A');
+    const root: Section = {
+      headingText: '',
+      headingLevel: 0,
+      anchor: '',
+      headingPath: [],
+      blocks: [],
+      children: [sectionA],
+    };
+    const pieces = [pieceFor(sectionA)];
+
+    const chunks = service.assemble(pieces, root, 'doc1', 'a.md', 'A Doc');
+    const parentChunk = chunks.find((c) => c.metadata.chunkType === 'parent')!;
+
+    expect(parentChunk.metadata.exceedsMaxSize).toBe(true);
+  });
+
+  it('gives a parent chunk and its own leaf section child chunk different chunkIds', () => {
+    // Regression test for the chunkId collision bug found via real-data
+    // validation: parent and child chunks for the same unsplit, unmerged
+    // section previously shared an identical chunkId.
+    const service = new ChunkAssemblerService(
+      buildMeasurer(),
+      buildConfig({ includeParentChunks: true }),
+      buildLogger() as never,
+    );
+    const sectionA = sectionOf('A');
+    const root: Section = {
+      headingText: '',
+      headingLevel: 0,
+      anchor: '',
+      headingPath: [],
+      blocks: [],
+      children: [sectionA],
+    };
+    const pieces = [pieceFor(sectionA)];
+
+    const chunks = service.assemble(pieces, root, 'doc1', 'a.md', 'A Doc');
+    const parentChunk = chunks.find((c) => c.metadata.chunkType === 'parent')!;
+    const childChunk = chunks.find((c) => c.metadata.chunkType === 'child')!;
+
+    expect(parentChunk.chunkId).not.toBe(childChunk.chunkId);
+  });
+
   it('links a child chunk to its own section parent chunk, and the parent back to its children', () => {
     const service = new ChunkAssemblerService(
+      buildMeasurer(),
       buildConfig({ includeParentChunks: true }),
       buildLogger() as never,
     );
@@ -164,6 +257,7 @@ describe('ChunkAssemblerService', () => {
 
   it('gives a section whose content was merged away an empty parent childChunkIds', () => {
     const service = new ChunkAssemblerService(
+      buildMeasurer(),
       buildConfig({ includeParentChunks: true }),
       buildLogger() as never,
     );
@@ -202,6 +296,7 @@ describe('ChunkAssemblerService', () => {
 
   it('produces no parent chunks when includeParentChunks is false', () => {
     const service = new ChunkAssemblerService(
+      buildMeasurer(),
       buildConfig({ includeParentChunks: false }),
       buildLogger() as never,
     );
@@ -224,6 +319,7 @@ describe('ChunkAssemblerService', () => {
 
   it('prefixes a heading-context breadcrumb on split continuation pieces only', () => {
     const service = new ChunkAssemblerService(
+      buildMeasurer(),
       buildConfig({ overlapStrategy: 'heading-context' }),
       buildLogger() as never,
     );
@@ -260,6 +356,7 @@ describe('ChunkAssemblerService', () => {
 
   it('applies no overlap text when overlapStrategy is none', () => {
     const service = new ChunkAssemblerService(
+      buildMeasurer(),
       buildConfig({ overlapStrategy: 'none' }),
       buildLogger() as never,
     );

@@ -76,6 +76,7 @@ describe('ChunkingPipelineService', () => {
       buildLogger() as never,
     );
     const assembler = new ChunkAssemblerService(
+      measurer,
       chunkingConfig,
       buildLogger() as never,
     );

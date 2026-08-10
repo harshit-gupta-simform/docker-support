@@ -1,8 +1,12 @@
 import { createHash } from 'node:crypto';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 import { deriveChunkId } from './chunk-id.util';
 import { ChunkingConfigService } from './chunking-config.service';
+import {
+  LENGTH_MEASURER_PORT,
+  type LengthMeasurerPort,
+} from './length-measurer';
 import {
   Chunk,
   ChunkMetadata,
@@ -14,6 +18,8 @@ import {
 @Injectable()
 export class ChunkAssemblerService {
   constructor(
+    @Inject(LENGTH_MEASURER_PORT)
+    private readonly lengthMeasurer: LengthMeasurerPort,
     private readonly config: ChunkingConfigService,
     private readonly logger: PinoLogger,
   ) {
@@ -68,6 +74,7 @@ export class ChunkAssemblerService {
   ): Chunk {
     const chunkId = deriveChunkId(
       documentId,
+      'child',
       piece.headingPath,
       piece.localSequenceIndex,
     );
@@ -190,8 +197,9 @@ export class ChunkAssemblerService {
     chunkedAt: string,
   ): Chunk {
     const fullText = this.collectFullText(section);
-    const chunkId = deriveChunkId(documentId, section.headingPath, 0);
+    const chunkId = deriveChunkId(documentId, 'parent', section.headingPath, 0);
     const contentTypes = Array.from(new Set(this.collectContentTypes(section)));
+    const length = this.lengthMeasurer.measure(fullText);
 
     const metadata: ChunkMetadata = {
       documentId,
@@ -200,12 +208,17 @@ export class ChunkAssemblerService {
       headingPath: section.headingPath,
       chunkType: 'parent',
       contentTypes,
-      length: fullText.length,
+      length,
       sequenceIndex: -1,
       wasSplit: false,
       wasMerged: false,
       mergedHeadings: [],
-      exceedsMaxSize: false,
+      // Parent chunks are deliberately uncapped by design (they hold a
+      // section's full subtree for context expansion), but that doesn't mean
+      // "too large to be useful" isn't a real, checkable condition — flagging
+      // it against the same maxChunkSize threshold as children gives callers
+      // a real signal instead of a hardcoded `false` that lies about size.
+      exceedsMaxSize: length > this.config.maxChunkSize,
       contentHash: createHash('sha256').update(fullText, 'utf-8').digest('hex'),
       chunkedAt,
     };
