@@ -1,0 +1,16 @@
+{
+  "documentId": "fixture-doc-1",
+  "metadata": {
+    "title": "Install Docker Engine",
+    "sourcePath": "install-docker-engine.md",
+    "contentHash": "fixture-hash",
+    "wordCount": 120,
+    "language": "en",
+    "headingOutline": [],
+    "frontMatter": { "title": "Install Docker Engine" },
+    "extractedAt": "2026-01-01T00:00:00.000Z"
+  },
+  "headings": [],
+  "codeBlocks": [],
+  "bodyText": "# Install Docker Engine\n\nThis guide explains how to install Docker Engine.\n\n> **Note:** Docker Engine requires a 64-bit kernel.\n\n## Prerequisites\n\nBefore installing, review the supported platforms.\n\n| Platform | Supported |\n| --- | --- |\n| Ubuntu | Yes |\n| Debian | Yes |\n| CentOS | No |\n\n## Install using the convenience script\n\nRun the following commands:\n\n```bash\ncurl -fsSL https://get.docker.com -o get-docker.sh\nsudo sh get-docker.sh\n```\n\n## Post-installation steps\n\nComplete these steps after installing:\n\n- Create the docker group\n- Add your user to the group\n- Log out and back in\n\n## See also\n\nSee the release notes for details."
+}
