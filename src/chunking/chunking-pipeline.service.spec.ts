@@ -102,6 +102,33 @@ describe('ChunkingPipelineService', () => {
     expect(result.totalSections).toBeGreaterThan(0);
   });
 
+  it('counts mergedSections as the number of original sections absorbed, not the number of merged output pieces', async () => {
+    // Three tiny undersized sibling sections should merge into one output
+    // chunk, but mergedSections should report 2 (the two sections folded
+    // away), not 1 (the single surviving merged chunk).
+    const service = buildService({ maxChunkSize: 1000, minChunkSize: 50 });
+    const doc = buildDocument(
+      '# Title\n\n## A\n\ntiny\n\n## B\n\ntiny too\n\n## C\n\nalso tiny',
+    );
+
+    const result = await service.chunk(doc);
+
+    expect(result.mergedSections).toBe(2);
+    expect(result.splitSections).toBe(0);
+  });
+
+  it('counts splitSections as the number of distinct sections split, not the number of resulting pieces', async () => {
+    // One oversized section split into several pieces should count as 1
+    // split section, not N pieces.
+    const service = buildService({ maxChunkSize: 15, minChunkSize: 2 });
+    const doc = buildDocument('# Title\n\n' + 'word '.repeat(40).trim());
+
+    const result = await service.chunk(doc);
+
+    expect(result.splitSections).toBe(1);
+    expect(result.mergedSections).toBe(0);
+  });
+
   it('handles an empty document without throwing, returning zero chunks', async () => {
     const service = buildService();
     const doc = buildDocument('   ');

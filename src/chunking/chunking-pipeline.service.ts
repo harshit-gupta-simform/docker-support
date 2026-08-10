@@ -59,8 +59,18 @@ export class ChunkingPipelineService {
     );
 
     const totalSections = this.countSections(root);
-    const splitSections = pieces.filter((piece) => piece.wasSplit).length;
-    const mergedSections = pieces.filter((piece) => piece.wasMerged).length;
+    // Counts distinct *original* sections affected, not output pieces — a
+    // section split into 3 pieces counts once here, and a merged group that
+    // absorbed 2 sibling sections counts 2 (the sections that no longer have
+    // their own chunk), not 1 (the surviving merged piece). This was found
+    // to matter during a real validation run: counting merged *pieces*
+    // silently understated how many sections actually got folded away.
+    const splitSections = new Set(
+      pieces.filter((piece) => piece.wasSplit).map((piece) => piece.section),
+    ).size;
+    const mergedSections = pieces
+      .filter((piece) => piece.wasMerged)
+      .reduce((sum, piece) => sum + piece.mergedHeadings.length, 0);
 
     const result: ChunkingResult = {
       documentId: document.documentId,
