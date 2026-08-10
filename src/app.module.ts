@@ -5,6 +5,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { ChunkingModule } from './chunking/chunking.module';
 import { HealthModule } from './health/health.module';
 import { IngestionModule } from './ingestion/ingestion.module';
 import { validateEnv } from './config/env.validation';
@@ -27,6 +28,7 @@ import { buildPinoHttpOptions } from './config/pino-http-options.factory';
     }),
     HealthModule,
     IngestionModule,
+    ChunkingModule,
   ],
   controllers: [AppController],
   providers: [
