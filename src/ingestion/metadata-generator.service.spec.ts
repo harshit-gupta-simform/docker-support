@@ -66,6 +66,57 @@ describe('MetadataGeneratorService', () => {
     expect(metadata.language).toBe('en');
   });
 
+  it('prefers the front-matter title over the parsed body title', () => {
+    // Regression test for a bug found via real-data testing: Hugo-based
+    // documentation sites (like Docker's actual docs) put the canonical
+    // title only in front matter and rarely repeat it as a body H1, so
+    // relying on the body-derived title alone silently produced the raw
+    // sourcePath as "title" for ~97% of a real Docker docs corpus.
+    const parsed = parsedDoc({ title: 'Body Heading', sourcePath: 'a.md' });
+
+    const metadata = service.generate(parsed, 'text', {
+      title: 'Use IPv6 networking',
+    });
+
+    expect(metadata.title).toBe('Use IPv6 networking');
+  });
+
+  it('falls back to the parsed body title when front matter has no title', () => {
+    const parsed = parsedDoc({ title: 'Body Heading' });
+
+    const metadata = service.generate(parsed, 'text', { description: 'x' });
+
+    expect(metadata.title).toBe('Body Heading');
+  });
+
+  it('falls back to the parsed body title when front-matter title is not a string', () => {
+    const parsed = parsedDoc({ title: 'Body Heading' });
+
+    const metadata = service.generate(parsed, 'text', { title: 42 });
+
+    expect(metadata.title).toBe('Body Heading');
+  });
+
+  it('falls back to the parsed body title when front-matter title is an empty string', () => {
+    const parsed = parsedDoc({ title: 'Body Heading' });
+
+    const metadata = service.generate(parsed, 'text', { title: '' });
+
+    expect(metadata.title).toBe('Body Heading');
+  });
+
+  it('falls back all the way to sourcePath when there is neither a front-matter title nor a body H1', () => {
+    // parsed.title is already H1-or-sourcePath by the time it reaches this
+    // service (MarkdownParserService's own contract) — this documents that
+    // the full 3-tier fallback (frontMatter.title -> H1 -> sourcePath)
+    // still resolves correctly end-to-end.
+    const parsed = parsedDoc({ title: 'no-h1.md', sourcePath: 'no-h1.md' });
+
+    const metadata = service.generate(parsed, 'text', {});
+
+    expect(metadata.title).toBe('no-h1.md');
+  });
+
   it('copies title, sourcePath, and headingOutline from the parsed document', () => {
     const parsed = parsedDoc({
       title: 'My Doc',

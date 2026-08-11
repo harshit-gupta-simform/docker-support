@@ -28,7 +28,7 @@ export class MetadataGeneratorService {
       .filter((word) => word.length > 0).length;
 
     return {
-      title: parsed.title,
+      title: this.resolveTitle(parsed.title, frontMatter),
       sourcePath: parsed.sourcePath,
       contentHash,
       wordCount,
@@ -37,6 +37,22 @@ export class MetadataGeneratorService {
       frontMatter,
       extractedAt: new Date().toISOString(),
     };
+  }
+
+  // Hugo-based documentation sites (like Docker's real docs) put the
+  // canonical title only in front matter and rarely repeat it as a body
+  // H1, so front matter must win when present. parsedTitle is already
+  // H1-or-sourcePath (MarkdownParserService's own contract), so this
+  // naturally collapses to the full frontMatter.title -> H1 -> sourcePath
+  // fallback chain.
+  private resolveTitle(
+    parsedTitle: string,
+    frontMatter: Record<string, unknown>,
+  ): string {
+    const candidate = frontMatter['title'];
+    return typeof candidate === 'string' && candidate.length > 0
+      ? candidate
+      : parsedTitle;
   }
 
   private resolveLanguage(frontMatter: Record<string, unknown>): string {
