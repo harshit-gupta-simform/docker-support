@@ -228,6 +228,88 @@ describe('ChunkAssemblerService', () => {
     expect(parentChunk.chunkId).not.toBe(childChunk.chunkId);
   });
 
+  it('gives two sections with identical heading text at the same nesting depth different chunkIds', () => {
+    // Regression test for a real bug found via a full run against Docker's
+    // actual documentation corpus (github.com/docker/docs): pages like
+    // uninstall.md have two separate, un-nested "## From the GUI"
+    // subsections (one per platform tab) sharing the exact same heading
+    // text and depth — headingPath alone can't distinguish them, so both
+    // previously produced colliding chunkIds.
+    const service = new ChunkAssemblerService(
+      buildMeasurer(),
+      buildConfig({ includeParentChunks: true }),
+      buildLogger() as never,
+    );
+    const sectionA1 = sectionOf('From the GUI');
+    const sectionA2 = sectionOf('From the GUI');
+    const root: Section = {
+      headingText: '',
+      headingLevel: 0,
+      anchor: '',
+      headingPath: [],
+      blocks: [],
+      children: [sectionA1, sectionA2],
+    };
+    const pieces = [pieceFor(sectionA1), pieceFor(sectionA2)];
+
+    const chunks = service.assemble(pieces, root, 'doc1', 'a.md', 'A Doc');
+    const childChunks = chunks.filter((c) => c.metadata.chunkType === 'child');
+    const parentChunks = chunks.filter(
+      (c) => c.metadata.chunkType === 'parent',
+    );
+
+    expect(childChunks).toHaveLength(2);
+    expect(childChunks[0]?.chunkId).not.toBe(childChunks[1]?.chunkId);
+    expect(parentChunks).toHaveLength(2);
+    expect(parentChunks[0]?.chunkId).not.toBe(parentChunks[1]?.chunkId);
+
+    // Each child must still link to its own correct parent, not the other's.
+    expect(childChunks[0]?.relationships.parentChunkId).toBe(
+      parentChunks[0]?.chunkId,
+    );
+    expect(childChunks[1]?.relationships.parentChunkId).toBe(
+      parentChunks[1]?.chunkId,
+    );
+  });
+
+  it('keeps split pieces of one section under the same occurrence while a later, distinct section with the same heading text gets a new occurrence', () => {
+    const service = new ChunkAssemblerService(
+      buildMeasurer(),
+      buildConfig({ includeParentChunks: false }),
+      buildLogger() as never,
+    );
+    const sectionA = sectionOf('Examples');
+    const sectionB = sectionOf('Examples');
+    const root: Section = {
+      headingText: '',
+      headingLevel: 0,
+      anchor: '',
+      headingPath: [],
+      blocks: [],
+      children: [sectionA, sectionB],
+    };
+    const splitPiece0 = pieceFor(sectionA, {
+      wasSplit: true,
+      localSequenceIndex: 0,
+    });
+    const splitPiece1 = pieceFor(sectionA, {
+      wasSplit: true,
+      localSequenceIndex: 1,
+    });
+    const laterPiece = pieceFor(sectionB, { localSequenceIndex: 0 });
+
+    const chunks = service.assemble(
+      [splitPiece0, splitPiece1, laterPiece],
+      root,
+      'doc1',
+      'a.md',
+      'A Doc',
+    );
+
+    const ids = chunks.map((c) => c.chunkId);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
   it('links a child chunk to its own section parent chunk, and the parent back to its children', () => {
     const service = new ChunkAssemblerService(
       buildMeasurer(),

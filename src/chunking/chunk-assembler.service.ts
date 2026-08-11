@@ -11,6 +11,7 @@ import {
   Chunk,
   ChunkMetadata,
   ContentBlockType,
+  HeadingPathSegment,
   ResolvedPiece,
   Section,
 } from './chunking.types';
@@ -35,10 +36,12 @@ export class ChunkAssemblerService {
   ): Chunk[] {
     const chunkedAt = new Date().toISOString();
 
+    const occurrenceIndices = this.computeOccurrenceIndices(pieces);
     const childChunks = pieces.map((piece, index) =>
       this.buildChildChunk(
         piece,
         index,
+        occurrenceIndices[index]!,
         documentId,
         sourcePath,
         documentTitle,
@@ -64,9 +67,38 @@ export class ChunkAssemblerService {
     return [...parentChunks, ...childChunks];
   }
 
+  // Real-corpus fix: two structurally distinct sections can share the exact
+  // same headingPath (identical heading text at the identical nesting
+  // depth — e.g. separate, un-nested "## From the GUI" subsections under
+  // two different platform tabs). occurrenceIndex counts how many times a
+  // given pathKey has already started a new section-run (localSequenceIndex
+  // === 0) earlier in the document, so each occurrence gets a distinct
+  // chunkId. Pieces continuing an existing run (localSequenceIndex > 0,
+  // i.e. split pieces of one oversized section) reuse that run's
+  // occurrence index rather than starting a new one.
+  private computeOccurrenceIndices(pieces: ResolvedPiece[]): number[] {
+    const nextOccurrence = new Map<string, number>();
+    const currentOccurrence = new Map<string, number>();
+
+    return pieces.map((piece) => {
+      const pathKey = this.pathKeyFor(piece.headingPath);
+      if (piece.localSequenceIndex === 0) {
+        const occurrence = nextOccurrence.get(pathKey) ?? 0;
+        nextOccurrence.set(pathKey, occurrence + 1);
+        currentOccurrence.set(pathKey, occurrence);
+      }
+      return currentOccurrence.get(pathKey) ?? 0;
+    });
+  }
+
+  private pathKeyFor(headingPath: HeadingPathSegment[]): string {
+    return headingPath.map((segment) => segment.anchor).join('/');
+  }
+
   private buildChildChunk(
     piece: ResolvedPiece,
     sequenceIndex: number,
+    occurrenceIndex: number,
     documentId: string,
     sourcePath: string,
     documentTitle: string,
@@ -76,6 +108,7 @@ export class ChunkAssemblerService {
       documentId,
       'child',
       piece.headingPath,
+      occurrenceIndex,
       piece.localSequenceIndex,
     );
     const metadata: ChunkMetadata = {
@@ -169,11 +202,17 @@ export class ChunkAssemblerService {
   ): { parentChunks: Chunk[]; parentChunkBySection: Map<Section, Chunk> } {
     const parentChunks: Chunk[] = [];
     const parentChunkBySection = new Map<Section, Chunk>();
+    const occurrenceCounts = new Map<string, number>();
 
     const visit = (section: Section): void => {
       if (section.headingLevel > 0) {
+        const pathKey = this.pathKeyFor(section.headingPath);
+        const occurrenceIndex = occurrenceCounts.get(pathKey) ?? 0;
+        occurrenceCounts.set(pathKey, occurrenceIndex + 1);
+
         const chunk = this.buildParentChunkFor(
           section,
+          occurrenceIndex,
           documentId,
           sourcePath,
           documentTitle,
@@ -191,13 +230,20 @@ export class ChunkAssemblerService {
 
   private buildParentChunkFor(
     section: Section,
+    occurrenceIndex: number,
     documentId: string,
     sourcePath: string,
     documentTitle: string,
     chunkedAt: string,
   ): Chunk {
     const fullText = this.collectFullText(section);
-    const chunkId = deriveChunkId(documentId, 'parent', section.headingPath, 0);
+    const chunkId = deriveChunkId(
+      documentId,
+      'parent',
+      section.headingPath,
+      occurrenceIndex,
+      0,
+    );
     const contentTypes = Array.from(new Set(this.collectContentTypes(section)));
     const length = this.lengthMeasurer.measure(fullText);
 
