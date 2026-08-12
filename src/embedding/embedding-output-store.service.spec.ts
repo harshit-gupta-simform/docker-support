@@ -40,6 +40,7 @@ describe('EmbeddingOutputStoreService', () => {
       warn: jest.fn(),
       info: jest.fn(),
     } as unknown as PinoLogger;
+    jest.clearAllMocks();
   });
 
   afterEach(async () => {
@@ -129,34 +130,55 @@ describe('EmbeddingOutputStoreService', () => {
   });
 
   it('does not poison the write queue after a single failed append', async () => {
-    // Use the actual append which works normally
     const store = buildStore();
+    let doWriteCallCount = 0;
 
-    // First append: succeeds normally
-    await store.append(buildRecord({ embeddingId: 'emb1' }));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
+    const storeWithPrivate = store as any;
 
-    // Create a second store with an impossible output path
-    const impossibleDir = '/dev/null/impossible/path';
-    const failingStore = new EmbeddingOutputStoreService(
-      { outputDir: impossibleDir } as EmbeddingConfigService,
-      logger,
+    // Patch the service's doWrite method to track calls and fail once
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const originalDoWrite: (record: EmbeddingRecord) => Promise<void> =
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+      storeWithPrivate['doWrite'].bind(store);
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    storeWithPrivate['doWrite'] = jest.fn(
+      (record: EmbeddingRecord): Promise<void> => {
+        doWriteCallCount++;
+        if (doWriteCallCount === 1) {
+          return Promise.reject(
+            new Error('Simulated transient write failure (e.g., ENOSPC)'),
+          );
+        }
+
+        return originalDoWrite(record);
+      },
     );
 
-    // First append to failing store: should fail
-    const failedAppend = failingStore.append(
-      buildRecord({ embeddingId: 'emb2' }),
+    // First append: should fail
+    const firstAppend = store.append(buildRecord({ embeddingId: 'emb1' }));
+    await expect(firstAppend).rejects.toThrow(
+      'Simulated transient write failure',
     );
-    await expect(failedAppend).rejects.toThrow();
 
-    // Second append to failing store: should ALSO fail (queue can retry)
-    // This proves the queue didn't get permanently poisoned
-    const retryAppend = failingStore.append(
-      buildRecord({ embeddingId: 'emb3' }),
-    );
-    await expect(retryAppend).rejects.toThrow();
+    // Verify doWrite was called once for the first append
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    expect(storeWithPrivate['doWrite']).toHaveBeenCalledTimes(1);
 
-    // The first store still works, proving the queue mechanism is sound
+    // Second append: should succeed
+    // With the fix, doWrite will be called again (both fulfill and reject paths call it)
+    // With buggy code, doWrite would NOT be called (the queue would short-circuit)
+    const secondAppend = store.append(buildRecord({ embeddingId: 'emb2' }));
+    await expect(secondAppend).resolves.toBeUndefined();
+
+    // Verify doWrite was called a SECOND time (proving the queue didn't poison)
+    // This assertion fails with buggy code because the second .then() short-circuits
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    expect(storeWithPrivate['doWrite']).toHaveBeenCalledTimes(2);
+
+    // Verify the second record was actually written
     const ids = await store.loadExistingEmbeddingIds();
-    expect(ids).toEqual(new Set(['emb1']));
+    expect(ids).toEqual(new Set(['emb2']));
   });
 });
