@@ -48,3 +48,6 @@ temp/
 
 # superpowers scratch workspaces
 .superpowers/
+
+# git worktrees
+/.worktrees/
