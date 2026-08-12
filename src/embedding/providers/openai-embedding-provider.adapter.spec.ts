@@ -80,13 +80,38 @@ describe('OpenAiEmbeddingProviderAdapter', () => {
     );
   });
 
-  it('maps a 429 response to RateLimitEmbeddingProviderError', async () => {
-    mockFetchOnce({ status: 429, body: { error: 'rate limited' } });
+  it('maps a 429 response to RateLimitEmbeddingProviderError, parsing Retry-After when present', async () => {
+    mockFetchOnce({
+      status: 429,
+      body: { error: 'rate limited' },
+      headers: { 'retry-after': '3' },
+    });
     const adapter = new OpenAiEmbeddingProviderAdapter('secret-key', metadata);
 
-    await expect(adapter.embed([{ id: 'a', text: 'x' }])).rejects.toThrow(
-      RateLimitEmbeddingProviderError,
-    );
+    try {
+      await adapter.embed([{ id: 'a', text: 'x' }]);
+      fail('expected embed() to throw');
+    } catch (err) {
+      expect(err).toBeInstanceOf(RateLimitEmbeddingProviderError);
+      expect((err as RateLimitEmbeddingProviderError).retryAfterMs).toBe(3000);
+    }
+  });
+
+  it('falls back to a null retryAfterMs (instead of NaN) when Retry-After is an HTTP-date rather than delay-seconds', async () => {
+    mockFetchOnce({
+      status: 429,
+      body: { error: 'rate limited' },
+      headers: { 'retry-after': 'Wed, 21 Oct 2026 07:28:00 GMT' },
+    });
+    const adapter = new OpenAiEmbeddingProviderAdapter('secret-key', metadata);
+
+    try {
+      await adapter.embed([{ id: 'a', text: 'x' }]);
+      fail('expected embed() to throw');
+    } catch (err) {
+      expect(err).toBeInstanceOf(RateLimitEmbeddingProviderError);
+      expect((err as RateLimitEmbeddingProviderError).retryAfterMs).toBeNull();
+    }
   });
 
   it('maps a 500 response to TransientEmbeddingProviderError', async () => {

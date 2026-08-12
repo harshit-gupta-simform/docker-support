@@ -103,7 +103,7 @@ describe('withRetry', () => {
     expect(calls).toEqual([777]);
   });
 
-  it('computes exponential backoff capped at maxDelayMs when no retryAfterMs is given', async () => {
+  it('computes exponential backoff capped at maxDelayMs, jittered to 0.5x-1.0x of the computed value, when no retryAfterMs is given', async () => {
     const { sleep, calls } = noopSleep();
     const fn = jest
       .fn()
@@ -118,8 +118,31 @@ describe('withRetry', () => {
       sleep,
     });
 
+    // attempt 1: un-jittered backoff = min(100 * 2^0, 150) = 100
+    expect(calls[0]).toBeGreaterThanOrEqual(50);
     expect(calls[0]).toBeLessThanOrEqual(100);
+    // attempt 2: un-jittered backoff = min(100 * 2^1, 150) = 150 (capped)
+    expect(calls[1]).toBeGreaterThanOrEqual(75);
     expect(calls[1]).toBeLessThanOrEqual(150);
+  });
+
+  it('clamps a provider-supplied retryAfterMs to maxDelayMs instead of honoring it verbatim when it exceeds the ceiling', async () => {
+    const { sleep, calls } = noopSleep();
+    const fn = jest
+      .fn()
+      .mockRejectedValueOnce(
+        new RateLimitEmbeddingProviderError('slow down', 3_600_000),
+      )
+      .mockResolvedValueOnce('ok');
+
+    await withRetry(fn, {
+      maxAttempts: 5,
+      baseDelayMs: 10,
+      maxDelayMs: 1000,
+      sleep,
+    });
+
+    expect(calls).toEqual([1000]);
   });
 
   it('defaults to a real timer-based sleep when none is injected', async () => {

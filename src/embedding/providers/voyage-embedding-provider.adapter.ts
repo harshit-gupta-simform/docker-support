@@ -9,6 +9,7 @@ import {
   TransientEmbeddingProviderError,
 } from '../embedding.errors';
 import { EmbeddingModelMetadata } from '../embedding.types';
+import { parseRetryAfterMs } from './retry-after.util';
 
 interface VoyageResponseBody {
   data: { embedding: number[]; index: number }[];
@@ -68,13 +69,9 @@ export class VoyageEmbeddingProviderAdapter implements EmbeddingProviderPort {
 
   private toError(response: Response): Error {
     if (response.status === 429) {
-      const retryAfterHeader = response.headers.get('retry-after');
-      const retryAfterMs = retryAfterHeader
-        ? Number(retryAfterHeader) * 1000
-        : null;
       return new RateLimitEmbeddingProviderError(
         'Voyage rate limit exceeded',
-        retryAfterMs,
+        parseRetryAfterMs(response.headers.get('retry-after')),
       );
     }
     if (response.status >= 500) {
