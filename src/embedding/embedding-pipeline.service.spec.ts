@@ -7,9 +7,27 @@ import { EmbeddingBatchProcessorService } from './embedding-batch-processor.serv
 import { EmbeddingConfigService } from './embedding-config.service';
 import { EmbeddingOutputStoreService } from './embedding-output-store.service';
 import { EmbeddingThresholdExceededError } from './embedding.errors';
-import { EmbeddingPipelineService } from './embedding-pipeline.service';
+import {
+  batchEligibleInputs,
+  EmbeddingPipelineService,
+} from './embedding-pipeline.service';
 import { PermanentEmbeddingProviderError } from './embedding.errors';
+import { EmbeddingInput } from './embedding.types';
 import { FakeEmbeddingProvider } from './providers/fake-embedding-provider';
+
+function buildInput(overrides: Partial<EmbeddingInput> = {}): EmbeddingInput {
+  return {
+    chunkId: 'chunk1',
+    documentId: 'doc1',
+    sourcePath: 'install.md',
+    contentHash: 'hash1',
+    text: 'hello',
+    inputHash: 'inputhash1',
+    tokenCount: 10,
+    truncated: false,
+    ...overrides,
+  };
+}
 
 function buildChunk(overrides: Partial<Chunk> = {}): Chunk {
   return {
@@ -93,7 +111,13 @@ describe('EmbeddingPipelineService', () => {
     provider: FakeEmbeddingProvider,
     configOverrides: Partial<EmbeddingConfigService> = {},
   ) {
-    const outputConfig = { outputDir } as EmbeddingConfigService;
+    const outputConfig = {
+      outputDir,
+      provider: provider.metadata.provider,
+      model: provider.metadata.model,
+      modelVersion: provider.metadata.modelVersion,
+      dimensions: provider.metadata.dimensions,
+    } as EmbeddingConfigService;
     const config = buildConfig(configOverrides);
     const logger = buildLogger();
     const outputStore = new EmbeddingOutputStoreService(outputConfig, logger);
@@ -184,7 +208,13 @@ describe('EmbeddingPipelineService', () => {
 
     expect(result.outputPath).toContain('embeddings.jsonl');
     const outputStore = new EmbeddingOutputStoreService(
-      { outputDir } as EmbeddingConfigService,
+      {
+        outputDir,
+        provider: metadata.provider,
+        model: metadata.model,
+        modelVersion: metadata.modelVersion,
+        dimensions: metadata.dimensions,
+      } as EmbeddingConfigService,
       buildLogger(),
     );
     const ids = await outputStore.loadExistingEmbeddingIds();
@@ -250,5 +280,56 @@ describe('EmbeddingPipelineService', () => {
 
     expect(result.totalChunksScanned).toBe(2);
     expect(result.succeeded).toBe(2);
+  });
+});
+
+describe('batchEligibleInputs', () => {
+  it('closes a batch once the token budget would be exceeded, even though the chunk-count limit has not been reached', () => {
+    const inputs = [
+      buildInput({ chunkId: 'parent1', tokenCount: 400 }),
+      buildInput({ chunkId: 'parent2', tokenCount: 400 }),
+      buildInput({ chunkId: 'parent3', tokenCount: 400 }), // running total 1200 > budget 1000
+      buildInput({ chunkId: 'child1', tokenCount: 10 }),
+    ];
+
+    const batches = batchEligibleInputs(inputs, /* maxCount */ 50, 1000);
+
+    // The 50-item count limit never binds; only the token budget does.
+    expect(batches.length).toBeGreaterThan(1);
+    for (const batch of batches) {
+      expect(batch.length).toBeLessThan(50);
+      const total = batch.reduce((sum, item) => sum + item.tokenCount, 0);
+      expect(total).toBeLessThanOrEqual(1000);
+    }
+    expect(batches).toEqual([
+      [inputs[0], inputs[1]],
+      [inputs[2], inputs[3]],
+    ]);
+  });
+
+  it('still respects the chunk-count limit when items are small enough that the token budget never binds', () => {
+    const inputs = Array.from({ length: 5 }, (_, i) =>
+      buildInput({ chunkId: `c${i}`, tokenCount: 1 }),
+    );
+
+    const batches = batchEligibleInputs(inputs, /* maxCount */ 2, 1000);
+
+    expect(batches).toEqual([
+      [inputs[0], inputs[1]],
+      [inputs[2], inputs[3]],
+      [inputs[4]],
+    ]);
+  });
+
+  it('gives a lone input exceeding the token budget its own batch rather than dropping or splitting it', () => {
+    const inputs = [buildInput({ chunkId: 'huge', tokenCount: 5000 })];
+
+    const batches = batchEligibleInputs(inputs, 50, 1000);
+
+    expect(batches).toEqual([[inputs[0]]]);
+  });
+
+  it('returns no batches for an empty input list', () => {
+    expect(batchEligibleInputs([], 50, 1000)).toEqual([]);
   });
 });

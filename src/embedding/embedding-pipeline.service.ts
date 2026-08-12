@@ -21,11 +21,51 @@ import {
   EmbeddingRunResult,
 } from './embedding.types';
 
-function chunkArray<T>(items: T[], size: number): T[][] {
-  const batches: T[][] = [];
-  for (let i = 0; i < items.length; i += size) {
-    batches.push(items.slice(i, i + size));
+// EMBEDDING_BATCH_SIZE alone caps how many chunks go into one provider
+// request, but not the SUMMED token count of a batch. With the default
+// EMBEDDING_CHUNK_TYPES=child this is safe in practice (children are small),
+// but EMBEDDING_CHUNK_TYPES=parent,child is a valid, schema-supported
+// configuration where 'parent' chunks are whole, uncapped sections — a
+// batch of `batchSize` such chunks could exceed a real provider's
+// per-request token ceiling, causing a 400 (whole-batch failure). This
+// budget is a conservative multiple of the per-input truncation ceiling
+// (EMBEDDING_INPUT_MAX_TOKENS), decoupled from batchSize so it can actually
+// bind before the count limit for a run of large inputs.
+const BATCH_TOKEN_BUDGET_MULTIPLIER = 8;
+
+// Greedily fills batches up to whichever limit — chunk count or summed
+// token budget — is hit first, closing the current batch early (even if
+// count still has room) rather than exceeding the token budget. A lone
+// input that alone exceeds the token budget still gets its own
+// single-item batch (there is nothing smaller we could do with it).
+export function batchEligibleInputs(
+  items: EmbeddingInput[],
+  maxCount: number,
+  maxTokenBudget: number,
+): EmbeddingInput[][] {
+  const batches: EmbeddingInput[][] = [];
+  let current: EmbeddingInput[] = [];
+  let currentTokens = 0;
+
+  for (const item of items) {
+    const wouldExceedCount = current.length >= maxCount;
+    const wouldExceedTokenBudget =
+      current.length > 0 && currentTokens + item.tokenCount > maxTokenBudget;
+
+    if (wouldExceedCount || wouldExceedTokenBudget) {
+      batches.push(current);
+      current = [];
+      currentTokens = 0;
+    }
+
+    current.push(item);
+    currentTokens += item.tokenCount;
   }
+
+  if (current.length > 0) {
+    batches.push(current);
+  }
+
   return batches;
 }
 
@@ -106,7 +146,11 @@ export class EmbeddingPipelineService {
       }
     }
 
-    const batches = chunkArray(eligibleInputs, this.config.batchSize);
+    const batches = batchEligibleInputs(
+      eligibleInputs,
+      this.config.batchSize,
+      this.config.inputMaxTokens * BATCH_TOKEN_BUDGET_MULTIPLIER,
+    );
     const limit = pLimit(this.config.maxConcurrentBatches);
     let succeededCount = 0;
     const failures: EmbeddingFailure[] = [];
