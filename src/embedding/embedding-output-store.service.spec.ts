@@ -47,8 +47,17 @@ describe('EmbeddingOutputStoreService', () => {
     await rm(outputDir, { recursive: true, force: true });
   });
 
-  function buildStore(): EmbeddingOutputStoreService {
-    const config = { outputDir } as EmbeddingConfigService;
+  function buildStore(
+    configOverrides: Partial<EmbeddingConfigService> = {},
+  ): EmbeddingOutputStoreService {
+    const config = {
+      outputDir,
+      provider: 'fake',
+      model: 'fake-model',
+      modelVersion: '1',
+      dimensions: 2,
+      ...configOverrides,
+    } as EmbeddingConfigService;
     return new EmbeddingOutputStoreService(config, logger);
   }
 
@@ -75,6 +84,27 @@ describe('EmbeddingOutputStoreService', () => {
     await store.append(buildRecord({ embeddingId: 'emb1' }));
     await store.append(buildRecord({ embeddingId: 'emb2' }));
     const ids = await store.loadExistingEmbeddingIds();
+
+    expect(ids).toEqual(new Set(['emb1', 'emb2']));
+  });
+
+  it('throws a clear error when the existing output was written with a different provider/model configuration', async () => {
+    const store = buildStore();
+    await store.append(buildRecord({ embeddingId: 'emb1', provider: 'fake' }));
+
+    const mismatchedStore = buildStore({ provider: 'voyage' });
+
+    await expect(mismatchedStore.loadExistingEmbeddingIds()).rejects.toThrow(
+      /provider=fake.*provider=voyage/s,
+    );
+  });
+
+  it('does not throw when the existing output matches the current provider/model configuration', async () => {
+    const store = buildStore();
+    await store.append(buildRecord({ embeddingId: 'emb1' }));
+    await store.append(buildRecord({ embeddingId: 'emb2' }));
+
+    const ids = await buildStore().loadExistingEmbeddingIds();
 
     expect(ids).toEqual(new Set(['emb1', 'emb2']));
   });
