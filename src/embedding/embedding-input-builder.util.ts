@@ -32,10 +32,27 @@ function truncateToTokenLimit(
   if (text.length <= maxChars) {
     return { text, truncated: false };
   }
+
   const slice = text.slice(0, maxChars);
   const lastWhitespace = slice.search(/\s\S*$/);
-  const safeSlice = lastWhitespace > 0 ? slice.slice(0, lastWhitespace) : slice;
-  return { text: safeSlice.trimEnd(), truncated: true };
+
+  if (lastWhitespace > 0) {
+    // Found a word boundary within the slice; cut there.
+    return { text: slice.slice(0, lastWhitespace).trimEnd(), truncated: true };
+  }
+
+  // No usable whitespace boundary within maxChars.
+  // Search forward from maxChars for the next whitespace.
+  for (let i = maxChars; i < text.length; i++) {
+    if (/\s/.test(text[i])) {
+      // Found whitespace at position i; cut there.
+      return { text: text.slice(0, i).trimEnd(), truncated: true };
+    }
+  }
+
+  // No whitespace found after maxChars either.
+  // Return the full original text (never truncate mid-word).
+  return { text, truncated: true };
 }
 
 export function buildEmbeddingInput(

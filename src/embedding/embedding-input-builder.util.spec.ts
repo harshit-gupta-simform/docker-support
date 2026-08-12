@@ -169,4 +169,39 @@ describe('buildEmbeddingInput', () => {
     expect(longText.includes(input!.text)).toBe(true);
     expect(/\S/.test(lastChar)).toBe(true);
   });
+
+  it('handles degenerate case: long unbroken run (no whitespace within limit) by extending past the limit to the next boundary', () => {
+    // Text with no whitespace in the first ~40 chars, but whitespace exists later.
+    // Example: 'word0 ' (6 chars) + 100 'x' chars (106 total unbroken) + ' word1'
+    const degenerateText = 'word0 ' + 'x'.repeat(100) + ' word1';
+    const chunk = buildChunk({ text: degenerateText });
+    const input = buildEmbeddingInput(chunk, {
+      includeHeadingContext: false,
+      maxInputTokens: 10, // ~40 characters, but 'x' run is 100 chars long
+    });
+
+    expect(input).not.toBeNull();
+    expect(input!.truncated).toBe(true);
+    // The result must end at a word boundary: either at the space after 'word0',
+    // or at the space after the 'x' run, or the full text if no whitespace exists.
+    const lastChar = input!.text[input!.text.length - 1]!;
+    expect(/\S/.test(lastChar)).toBe(true); // Never ends with whitespace after trim
+    // The returned text must exist as a substring in the original (never mid-word cut).
+    expect(degenerateText.includes(input!.text)).toBe(true);
+  });
+
+  it('returns full text without truncation when no whitespace exists after maxChars (degenerate: single unbroken word)', () => {
+    // A single very long unbroken word (no whitespace at all).
+    const singleWord = 'x'.repeat(500);
+    const chunk = buildChunk({ text: singleWord });
+    const input = buildEmbeddingInput(chunk, {
+      includeHeadingContext: false,
+      maxInputTokens: 10, // ~40 characters, much less than 500
+    });
+
+    expect(input).not.toBeNull();
+    expect(input!.truncated).toBe(true);
+    // Since there's no whitespace to split on, we return the full text.
+    expect(input!.text).toBe(singleWord);
+  });
 });
