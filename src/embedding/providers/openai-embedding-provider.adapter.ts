@@ -1,0 +1,91 @@
+import {
+  EmbeddingProviderPort,
+  EmbeddingProviderRequestItem,
+  EmbeddingProviderResponseItem,
+} from '../embedding-provider.port';
+import {
+  PermanentEmbeddingProviderError,
+  RateLimitEmbeddingProviderError,
+  TransientEmbeddingProviderError,
+} from '../embedding.errors';
+import { EmbeddingModelMetadata } from '../embedding.types';
+
+interface OpenAiResponseBody {
+  data: { embedding: number[]; index: number }[];
+}
+
+const DEFAULT_BASE_URL = 'https://api.openai.com/v1/embeddings';
+
+// Deliberately shaped so that pointing `baseUrl` at a self-hosted,
+// OpenAI-compatible inference server (e.g. Hugging Face TEI) requires zero
+// new adapter code — see design doc §4's local-model migration note.
+export class OpenAiEmbeddingProviderAdapter implements EmbeddingProviderPort {
+  constructor(
+    private readonly apiKey: string,
+    public readonly metadata: EmbeddingModelMetadata,
+    private readonly baseUrl: string = DEFAULT_BASE_URL,
+  ) {}
+
+  async embed(
+    items: EmbeddingProviderRequestItem[],
+    signal?: AbortSignal,
+  ): Promise<EmbeddingProviderResponseItem[]> {
+    let response: Response;
+    try {
+      const init: RequestInit = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          input: items.map((item) => item.text),
+          model: this.metadata.model,
+          dimensions: this.metadata.dimensions,
+        }),
+      };
+      if (signal !== undefined) {
+        init.signal = signal;
+      }
+      response = await fetch(this.baseUrl, init);
+    } catch (err) {
+      throw new TransientEmbeddingProviderError(
+        'OpenAI embeddings request failed',
+        {
+          cause: err,
+        },
+      );
+    }
+
+    if (!response.ok) {
+      throw this.toError(response);
+    }
+
+    const body = (await response.json()) as OpenAiResponseBody;
+    return items.map((item, index) => {
+      const entry = body.data.find((candidate) => candidate.index === index);
+      return { id: item.id, vector: entry?.embedding ?? [] };
+    });
+  }
+
+  private toError(response: Response): Error {
+    if (response.status === 429) {
+      const retryAfterHeader = response.headers.get('retry-after');
+      const retryAfterMs = retryAfterHeader
+        ? Number(retryAfterHeader) * 1000
+        : null;
+      return new RateLimitEmbeddingProviderError(
+        'OpenAI rate limit exceeded',
+        retryAfterMs,
+      );
+    }
+    if (response.status >= 500) {
+      return new TransientEmbeddingProviderError(
+        `OpenAI embeddings request failed with status ${response.status}`,
+      );
+    }
+    return new PermanentEmbeddingProviderError(
+      `OpenAI embeddings request failed with status ${response.status}`,
+    );
+  }
+}
