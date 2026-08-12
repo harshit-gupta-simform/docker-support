@@ -58,14 +58,20 @@ export class EmbeddingOutputStoreService {
   }
 
   append(record: EmbeddingRecord): Promise<void> {
-    this.writeQueue = this.writeQueue.then(async () => {
-      await mkdir(this.config.outputDir, { recursive: true });
-      await appendFile(
-        this.outputFilePath(),
-        `${JSON.stringify(record)}\n`,
-        'utf-8',
-      );
-    });
-    return this.writeQueue;
+    const write = this.writeQueue.then(
+      () => this.doWrite(record),
+      () => this.doWrite(record),
+    );
+    this.writeQueue = write.catch(() => undefined);
+    return write;
+  }
+
+  private async doWrite(record: EmbeddingRecord): Promise<void> {
+    await mkdir(this.config.outputDir, { recursive: true });
+    await appendFile(
+      this.outputFilePath(),
+      `${JSON.stringify(record)}\n`,
+      'utf-8',
+    );
   }
 }

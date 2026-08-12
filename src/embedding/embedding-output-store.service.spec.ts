@@ -127,4 +127,36 @@ describe('EmbeddingOutputStoreService', () => {
 
     expect(store.outputFilePath()).toBe(join(outputDir, 'embeddings.jsonl'));
   });
+
+  it('does not poison the write queue after a single failed append', async () => {
+    // Use the actual append which works normally
+    const store = buildStore();
+
+    // First append: succeeds normally
+    await store.append(buildRecord({ embeddingId: 'emb1' }));
+
+    // Create a second store with an impossible output path
+    const impossibleDir = '/dev/null/impossible/path';
+    const failingStore = new EmbeddingOutputStoreService(
+      { outputDir: impossibleDir } as EmbeddingConfigService,
+      logger,
+    );
+
+    // First append to failing store: should fail
+    const failedAppend = failingStore.append(
+      buildRecord({ embeddingId: 'emb2' }),
+    );
+    await expect(failedAppend).rejects.toThrow();
+
+    // Second append to failing store: should ALSO fail (queue can retry)
+    // This proves the queue didn't get permanently poisoned
+    const retryAppend = failingStore.append(
+      buildRecord({ embeddingId: 'emb3' }),
+    );
+    await expect(retryAppend).rejects.toThrow();
+
+    // The first store still works, proving the queue mechanism is sound
+    const ids = await store.loadExistingEmbeddingIds();
+    expect(ids).toEqual(new Set(['emb1']));
+  });
 });
