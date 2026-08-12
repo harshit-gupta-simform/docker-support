@@ -1,0 +1,259 @@
+[
+  {
+    "chunkId": "85813ad241a2b45087d057967a494040420ebca8350b3e0513294730286dd074",
+    "text": "# Install Docker Engine\n\nThis guide explains how to install Docker Engine.\n\n> **Note:** Docker Engine requires a 64-bit kernel.\n\n## Prerequisites\n\nBefore installing, review the supported platforms.\n\n| Platform | Supported |\n| --- | --- |\n| Ubuntu | Yes |\n| Debian | Yes |\n| CentOS | No |\n\n## Install using the convenience script\n\nRun the following commands:\n\n```bash\ncurl -fsSL https://get.docker.com -o get-docker.sh\nsudo sh get-docker.sh\n```\n\n## Post-installation steps\n\nComplete these steps after installing:\n\n- Create the docker group\n- Add your user to the group\n- Log out and back in\n\n\n## See also\n\nSee the release notes for details.",
+    "metadata": {
+      "documentId": "fixture-doc-1",
+      "sourcePath": "install-docker-engine.md",
+      "documentTitle": "Install Docker Engine",
+      "headingPath": [
+        {
+          "level": 1,
+          "text": "Install Docker Engine",
+          "anchor": "install-docker-engine"
+        }
+      ],
+      "chunkType": "parent",
+      "contentTypes": ["paragraph", "note", "table", "code", "list"],
+      "length": 160,
+      "sequenceIndex": -1,
+      "wasSplit": false,
+      "wasMerged": false,
+      "mergedHeadings": [],
+      "exceedsMaxSize": false,
+      "contentHash": "5185258b65f7888f3ad352cefb99559ad925231503d71b75eeaa82bdaf03de2a",
+      "chunkedAt": "2026-08-12T12:06:39.435Z"
+    },
+    "relationships": {
+      "parentChunkId": null,
+      "childChunkIds": [
+        "7a117d5b90138069591ec3f539520f7af570c3b54557aa60a7069c36cfe668cb"
+      ],
+      "previousChunkId": null,
+      "nextChunkId": null
+    }
+  },
+  {
+    "chunkId": "2016bec2cde6dcb54c26651e246eed8824956e053fcd042eb29b070cae11c801",
+    "text": "## Prerequisites\n\nBefore installing, review the supported platforms.\n\n| Platform | Supported |\n| --- | --- |\n| Ubuntu | Yes |\n| Debian | Yes |\n| CentOS | No |",
+    "metadata": {
+      "documentId": "fixture-doc-1",
+      "sourcePath": "install-docker-engine.md",
+      "documentTitle": "Install Docker Engine",
+      "headingPath": [
+        {
+          "level": 1,
+          "text": "Install Docker Engine",
+          "anchor": "install-docker-engine"
+        },
+        {
+          "level": 2,
+          "text": "Prerequisites",
+          "anchor": "prerequisites"
+        }
+      ],
+      "chunkType": "parent",
+      "contentTypes": ["paragraph", "table"],
+      "length": 40,
+      "sequenceIndex": -1,
+      "wasSplit": false,
+      "wasMerged": false,
+      "mergedHeadings": [],
+      "exceedsMaxSize": false,
+      "contentHash": "d5f770ec64b76c987e16e5e9ee55803b8ecc5ad624109b002aa37497d57f2b2f",
+      "chunkedAt": "2026-08-12T12:06:39.435Z"
+    },
+    "relationships": {
+      "parentChunkId": null,
+      "childChunkIds": [
+        "d3c5fe055b49fdc1a188e2a241c5f7e220acb82b6cb8664e59c7908898a81e48"
+      ],
+      "previousChunkId": null,
+      "nextChunkId": null
+    }
+  },
+  {
+    "chunkId": "f07c08be91847f3c715890ada5ccd0f75ea599d1de8df5c7bb4fea531102c12c",
+    "text": "## Install using the convenience script\n\nRun the following commands:\n\n```bash\ncurl -fsSL https://get.docker.com -o get-docker.sh\nsudo sh get-docker.sh\n```",
+    "metadata": {
+      "documentId": "fixture-doc-1",
+      "sourcePath": "install-docker-engine.md",
+      "documentTitle": "Install Docker Engine",
+      "headingPath": [
+        {
+          "level": 1,
+          "text": "Install Docker Engine",
+          "anchor": "install-docker-engine"
+        },
+        {
+          "level": 2,
+          "text": "Install using the convenience script",
+          "anchor": "install-using-the-convenience-script"
+        }
+      ],
+      "chunkType": "parent",
+      "contentTypes": ["paragraph", "code"],
+      "length": 39,
+      "sequenceIndex": -1,
+      "wasSplit": false,
+      "wasMerged": false,
+      "mergedHeadings": [],
+      "exceedsMaxSize": false,
+      "contentHash": "6d940b1d046d31807af7051f3eb91edfd66b6cd4d03c2851609d6dd4623a5cba",
+      "chunkedAt": "2026-08-12T12:06:39.435Z"
+    },
+    "relationships": {
+      "parentChunkId": null,
+      "childChunkIds": [],
+      "previousChunkId": null,
+      "nextChunkId": null
+    }
+  },
+  {
+    "chunkId": "7e8e8edc4a143c6565959869aff579c6738d6d4e45e97432eb2747df79387be5",
+    "text": "## Post-installation steps\n\nComplete these steps after installing:\n\n- Create the docker group\n- Add your user to the group\n- Log out and back in\n",
+    "metadata": {
+      "documentId": "fixture-doc-1",
+      "sourcePath": "install-docker-engine.md",
+      "documentTitle": "Install Docker Engine",
+      "headingPath": [
+        {
+          "level": 1,
+          "text": "Install Docker Engine",
+          "anchor": "install-docker-engine"
+        },
+        {
+          "level": 2,
+          "text": "Post-installation steps",
+          "anchor": "post-installation-steps"
+        }
+      ],
+      "chunkType": "parent",
+      "contentTypes": ["paragraph", "list"],
+      "length": 37,
+      "sequenceIndex": -1,
+      "wasSplit": false,
+      "wasMerged": false,
+      "mergedHeadings": [],
+      "exceedsMaxSize": false,
+      "contentHash": "e350d8a5a76647cbfd02a0f38c240e555a048472fb3e15b19c2f1fb699839ecf",
+      "chunkedAt": "2026-08-12T12:06:39.435Z"
+    },
+    "relationships": {
+      "parentChunkId": null,
+      "childChunkIds": [],
+      "previousChunkId": null,
+      "nextChunkId": null
+    }
+  },
+  {
+    "chunkId": "6dfeb21d21811ec17b82d4b6fb5e8dcdbcc2731487d7b8c9a52ad010fb525392",
+    "text": "## See also\n\nSee the release notes for details.",
+    "metadata": {
+      "documentId": "fixture-doc-1",
+      "sourcePath": "install-docker-engine.md",
+      "documentTitle": "Install Docker Engine",
+      "headingPath": [
+        {
+          "level": 1,
+          "text": "Install Docker Engine",
+          "anchor": "install-docker-engine"
+        },
+        {
+          "level": 2,
+          "text": "See also",
+          "anchor": "see-also"
+        }
+      ],
+      "chunkType": "parent",
+      "contentTypes": ["paragraph"],
+      "length": 12,
+      "sequenceIndex": -1,
+      "wasSplit": false,
+      "wasMerged": false,
+      "mergedHeadings": [],
+      "exceedsMaxSize": false,
+      "contentHash": "0f6bef5abe91cdbc4be09a306540462a4896c563bd71af02be61ac9735a462be",
+      "chunkedAt": "2026-08-12T12:06:39.435Z"
+    },
+    "relationships": {
+      "parentChunkId": null,
+      "childChunkIds": [],
+      "previousChunkId": null,
+      "nextChunkId": null
+    }
+  },
+  {
+    "chunkId": "7a117d5b90138069591ec3f539520f7af570c3b54557aa60a7069c36cfe668cb",
+    "text": "# Install Docker Engine\n\nThis guide explains how to install Docker Engine.\n\n> **Note:** Docker Engine requires a 64-bit kernel.",
+    "metadata": {
+      "documentId": "fixture-doc-1",
+      "sourcePath": "install-docker-engine.md",
+      "documentTitle": "Install Docker Engine",
+      "headingPath": [
+        {
+          "level": 1,
+          "text": "Install Docker Engine",
+          "anchor": "install-docker-engine"
+        }
+      ],
+      "chunkType": "child",
+      "contentTypes": ["paragraph", "note"],
+      "length": 32,
+      "sequenceIndex": 0,
+      "wasSplit": false,
+      "wasMerged": false,
+      "mergedHeadings": [],
+      "exceedsMaxSize": false,
+      "contentHash": "d86b917699674c64efad205330769d68c38a94edf70a7b683c96e95d9e3d5432",
+      "chunkedAt": "2026-08-12T12:06:39.435Z"
+    },
+    "relationships": {
+      "parentChunkId": "85813ad241a2b45087d057967a494040420ebca8350b3e0513294730286dd074",
+      "childChunkIds": [],
+      "previousChunkId": null,
+      "nextChunkId": "d3c5fe055b49fdc1a188e2a241c5f7e220acb82b6cb8664e59c7908898a81e48"
+    }
+  },
+  {
+    "chunkId": "d3c5fe055b49fdc1a188e2a241c5f7e220acb82b6cb8664e59c7908898a81e48",
+    "text": "## Prerequisites\n\nBefore installing, review the supported platforms.\n\n| Platform | Supported |\n| --- | --- |\n| Ubuntu | Yes |\n| Debian | Yes |\n| CentOS | No |\n\n## Install using the convenience script\n\nRun the following commands:\n\n```bash\ncurl -fsSL https://get.docker.com -o get-docker.sh\nsudo sh get-docker.sh\n```\n\n## Post-installation steps\n\nComplete these steps after installing:\n\n- Create the docker group\n- Add your user to the group\n- Log out and back in\n\n## See also\n\nSee the release notes for details.",
+    "metadata": {
+      "documentId": "fixture-doc-1",
+      "sourcePath": "install-docker-engine.md",
+      "documentTitle": "Install Docker Engine",
+      "headingPath": [
+        {
+          "level": 1,
+          "text": "Install Docker Engine",
+          "anchor": "install-docker-engine"
+        },
+        {
+          "level": 2,
+          "text": "Prerequisites",
+          "anchor": "prerequisites"
+        }
+      ],
+      "chunkType": "child",
+      "contentTypes": ["paragraph", "table", "code", "list"],
+      "length": 126,
+      "sequenceIndex": 1,
+      "wasSplit": false,
+      "wasMerged": true,
+      "mergedHeadings": [
+        "Install using the convenience script",
+        "Post-installation steps",
+        "See also"
+      ],
+      "exceedsMaxSize": false,
+      "contentHash": "d72c02fe40f85833683ebe7edb6d5c11a0793a2f209a48f8399bf1373f1c0bda",
+      "chunkedAt": "2026-08-12T12:06:39.435Z"
+    },
+    "relationships": {
+      "parentChunkId": "2016bec2cde6dcb54c26651e246eed8824956e053fcd042eb29b070cae11c801",
+      "childChunkIds": [],
+      "previousChunkId": "7a117d5b90138069591ec3f539520f7af570c3b54557aa60a7069c36cfe668cb",
+      "nextChunkId": null
+    }
+  }
+]
