@@ -20,6 +20,23 @@ describe('validateEnv', () => {
       CHUNKING_OVERLAP_SENTENCES: 1,
       CHUNKING_INCLUDE_PARENT_CHUNKS: true,
       CHUNKING_OUTPUT_DIR: './data/chunks-output',
+      EMBEDDING_PROVIDER: 'voyage',
+      EMBEDDING_MODEL: 'voyage-code-3',
+      EMBEDDING_MODEL_VERSION: '1',
+      EMBEDDING_DIMENSIONS: 1024,
+      EMBEDDING_API_KEY: '',
+      EMBEDDING_BASE_URL: '',
+      EMBEDDING_BATCH_SIZE: 128,
+      EMBEDDING_MAX_CONCURRENT_BATCHES: 5,
+      EMBEDDING_MAX_RETRIES: 5,
+      EMBEDDING_RETRY_BASE_DELAY_MS: 500,
+      EMBEDDING_RETRY_MAX_DELAY_MS: 30000,
+      EMBEDDING_REQUEST_TIMEOUT_MS: 30000,
+      EMBEDDING_INPUT_MAX_TOKENS: 8000,
+      EMBEDDING_INCLUDE_HEADING_CONTEXT: true,
+      EMBEDDING_CHUNK_TYPES: ['child'],
+      EMBEDDING_OUTPUT_DIR: './data/embedding-output',
+      EMBEDDING_FAILURE_THRESHOLD: 0.5,
     });
   });
 
@@ -46,6 +63,23 @@ describe('validateEnv', () => {
       CHUNKING_OVERLAP_SENTENCES: '2',
       CHUNKING_INCLUDE_PARENT_CHUNKS: 'false',
       CHUNKING_OUTPUT_DIR: '/data/chunks-out',
+      EMBEDDING_PROVIDER: 'openai',
+      EMBEDDING_MODEL: 'text-embedding-3-large',
+      EMBEDDING_MODEL_VERSION: '2',
+      EMBEDDING_DIMENSIONS: '3072',
+      EMBEDDING_API_KEY: 'test-api-key',
+      EMBEDDING_BASE_URL: 'https://api.example.com',
+      EMBEDDING_BATCH_SIZE: '64',
+      EMBEDDING_MAX_CONCURRENT_BATCHES: '3',
+      EMBEDDING_MAX_RETRIES: '3',
+      EMBEDDING_RETRY_BASE_DELAY_MS: '250',
+      EMBEDDING_RETRY_MAX_DELAY_MS: '15000',
+      EMBEDDING_REQUEST_TIMEOUT_MS: '20000',
+      EMBEDDING_INPUT_MAX_TOKENS: '4000',
+      EMBEDDING_INCLUDE_HEADING_CONTEXT: 'false',
+      EMBEDDING_CHUNK_TYPES: 'parent,child',
+      EMBEDDING_OUTPUT_DIR: '/data/embedding-out',
+      EMBEDDING_FAILURE_THRESHOLD: '0.25',
     });
 
     expect(result).toEqual({
@@ -64,6 +98,23 @@ describe('validateEnv', () => {
       CHUNKING_OVERLAP_SENTENCES: 2,
       CHUNKING_INCLUDE_PARENT_CHUNKS: false,
       CHUNKING_OUTPUT_DIR: '/data/chunks-out',
+      EMBEDDING_PROVIDER: 'openai',
+      EMBEDDING_MODEL: 'text-embedding-3-large',
+      EMBEDDING_MODEL_VERSION: '2',
+      EMBEDDING_DIMENSIONS: 3072,
+      EMBEDDING_API_KEY: 'test-api-key',
+      EMBEDDING_BASE_URL: 'https://api.example.com',
+      EMBEDDING_BATCH_SIZE: 64,
+      EMBEDDING_MAX_CONCURRENT_BATCHES: 3,
+      EMBEDDING_MAX_RETRIES: 3,
+      EMBEDDING_RETRY_BASE_DELAY_MS: 250,
+      EMBEDDING_RETRY_MAX_DELAY_MS: 15000,
+      EMBEDDING_REQUEST_TIMEOUT_MS: 20000,
+      EMBEDDING_INPUT_MAX_TOKENS: 4000,
+      EMBEDDING_INCLUDE_HEADING_CONTEXT: false,
+      EMBEDDING_CHUNK_TYPES: ['parent', 'child'],
+      EMBEDDING_OUTPUT_DIR: '/data/embedding-out',
+      EMBEDDING_FAILURE_THRESHOLD: 0.25,
     });
   });
 
@@ -84,6 +135,15 @@ describe('validateEnv', () => {
       validateEnv({
         CHUNKING_MIN_CHUNK_SIZE: '500',
         CHUNKING_MAX_CHUNK_SIZE: '500',
+      }),
+    ).toThrow(/Invalid environment configuration/);
+  });
+
+  it('throws when EMBEDDING_RETRY_BASE_DELAY_MS is not less than EMBEDDING_RETRY_MAX_DELAY_MS', () => {
+    expect(() =>
+      validateEnv({
+        EMBEDDING_RETRY_BASE_DELAY_MS: '30000',
+        EMBEDDING_RETRY_MAX_DELAY_MS: '30000',
       }),
     ).toThrow(/Invalid environment configuration/);
   });
