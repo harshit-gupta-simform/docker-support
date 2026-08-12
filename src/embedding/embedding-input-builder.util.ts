@@ -44,7 +44,7 @@ function truncateToTokenLimit(
   // No usable whitespace boundary within maxChars.
   // Search forward from maxChars for the next whitespace.
   for (let i = maxChars; i < text.length; i++) {
-    if (/\s/.test(text[i])) {
+    if (/\s/.test(text[i]!)) {
       // Found whitespace at position i; cut there.
       return { text: text.slice(0, i).trimEnd(), truncated: true };
     }
