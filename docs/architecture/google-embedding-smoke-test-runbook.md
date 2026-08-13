@@ -32,6 +32,34 @@ this specific run is passed as an inline environment override on the
 command line below, not baked into `.env`, so this exact ceiling is
 visible in the command you type every time, not hidden in a file.)
 
+## Step 0: verify the wire shape with a single, tiny live call
+
+Before running the real 100-chunk batch below, confirm one open question
+about Google's exact request shape: whether each individual item in a
+`batchEmbedContents` request's `requests[]` array needs a redundant
+`"model": "models/gemini-embedding-001"` field, even though the model is
+already in the URL path (Google's docs are ambiguous on this). Do this with
+a single, tiny, bounded `curl` request — **not** a batch, and it does not
+count against the 100-chunk cap below:
+
+```bash
+curl -s -X POST \
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents" \
+  -H "x-goog-api-key: <your real Google API key>" \
+  -H "Content-Type: application/json" \
+  -d '{"requests":[{"content":{"parts":[{"text":"test"}]},"embedContentConfig":{"taskType":"RETRIEVAL_DOCUMENT","outputDimensionality":768}}]}'
+```
+
+- If this returns a `200` with an `embeddings` array, the current adapter
+  shape (no per-item `model` field) is correct — proceed to "The command"
+  below with no code changes.
+- If this returns a `400` specifically about a missing/invalid model, add
+  `"model": "models/gemini-embedding-001"` to each `requests[]` entry
+  built in `src/embedding/providers/google-embedding-provider.adapter.ts`'s
+  `embed()` method, then re-run
+  `pnpm test -- google-embedding-provider.adapter.spec.ts` to confirm the
+  change before proceeding to "The command."
+
 ## The command
 
 Run this exactly as written, once. All of the following are inline
@@ -49,6 +77,7 @@ EMBEDDING_BATCH_SIZE=10 \
 EMBEDDING_MAX_CONCURRENT_BATCHES=1 \
 EMBEDDING_MAX_RETRIES=3 \
 EMBEDDING_OUTPUT_DIR=./data/embedding-output-google-smoke-test \
+EMBEDDING_BASE_URL= \
 pnpm embed ./data/chunks-output
 ```
 
@@ -86,10 +115,22 @@ pnpm embed ./data/chunks-output
   already-tested provider/model mismatch guard in
   `EmbeddingOutputStoreService` cannot fire (it would refuse to run if this
   pointed at output written by a different provider) and, if you ever
-  re-run this exact command a second time, the existing resumability logic
-  makes it a **zero-cost no-op** — all 100 `embeddingId`s are already
-  present, so `alreadyEmbedded` will read `100` and `attempted` will read
-  `0`. Re-running this command by accident does not spend additional quota.
+  re-run this exact command a second time on top of a **fully successful**
+  first run, the existing resumability logic makes it a **zero-cost
+  no-op** — all 100 `embeddingId`s are already present, so
+  `alreadyEmbedded` will read `100` and `attempted` will read `0`. This
+  free-re-run guarantee does **not** hold for a partially-or-fully-failed
+  first run — see the resumability caveat under "If something goes wrong"
+  below before re-running after any failure.
+- `EMBEDDING_BASE_URL=` (explicitly empty) — neutralizes any stale, non-empty
+  value already sitting in your `.env` from earlier Voyage/OpenAI
+  experimentation. Voyage/OpenAI treat `EMBEDDING_BASE_URL` as a _complete
+  endpoint URL_, but the Google adapter treats it as an _API root prefix_
+  it appends `/models/{model}:batchEmbedContents` onto — a leftover value
+  pointed at some other host would silently send your real Google API key
+  (via the `x-goog-api-key` header) to that host instead of Google's API.
+  Leaving this blank forces the adapter's built-in
+  `https://generativelanguage.googleapis.com/v1beta` default.
 
 ## What to check afterward
 
@@ -112,6 +153,12 @@ pnpm embed ./data/chunks-output
    (a five-line Node script is enough), and confirm the related pair scores
    higher than the unrelated pair. This is the actual proof that these are
    _real_ semantic embeddings, not just successfully-shaped API responses.
+   Note: at 768 dimensions, `gemini-embedding-001`'s output vectors are
+   **not** unit-normalized by the API (per Google's own docs — only the
+   full 3072-dimension output is). This cosine-similarity check doesn't
+   need normalization since cosine similarity is scale-invariant, but if a
+   future vector store needs unit vectors (e.g. for a dot-product-based
+   similarity index), normalize these at ingestion time.
 
 ## If something goes wrong
 
@@ -123,7 +170,26 @@ pnpm embed ./data/chunks-output
   https://aistudio.google.com/rate-limit, and lower
   `EMBEDDING_BATCH_SIZE`/add a manual delay between runs rather than
   re-running immediately.
-- **Any other failure:** the run's own `failures` array in the printed
-  result names the failing `chunkId`s and error messages — read it before
-  deciding whether to re-run (remember: re-running is safe/free for chunks
-  already embedded, per the resumability note above).
+- **`Embedding run failed: ...` printed, with no `EmbeddingRunResult` JSON:**
+  `EMBEDDING_FAILURE_THRESHOLD` defaults to `0.5` and is not overridden by
+  this runbook's command — if more than half of the 10 batches fail (e.g.
+  every batch 400s on a wrong request shape), `EmbeddingPipelineService.run()`
+  throws `EmbeddingThresholdExceededError` _before_ it ever constructs an
+  `EmbeddingRunResult`, so there is no `failures` array to read from the
+  final output. Scroll up in the terminal output instead: each failed batch
+  logs its own `Embedding batch failed permanently after retries` warning
+  line (structured with `batchId`, `chunkCount`, and `error`) from
+  `EmbeddingBatchProcessorService` as the run proceeds — that's where the
+  actual diagnostic detail is.
+- **Any other failure (an `EmbeddingRunResult` JSON was printed):** the
+  run's own `failures` array in the printed result names the failing
+  `chunkId`s and error messages.
+- **Before re-running after any failure:** re-running is a free no-op only
+  for the chunks that were _already successfully written_ to the output
+  file — failed chunks are never written, so a re-run does not simply
+  retry them for free. Instead, a re-run treats those failed chunks as
+  still-eligible input and will fill the rest of a fresh capped batch of
+  100 with brand-new chunks (in the worst case — e.g. every chunk failed —
+  a re-run spends a completely fresh 100). Diagnose and fix the root cause
+  of the failure first (see above); don't reflexively re-run expecting it
+  to be free unless you've confirmed the prior run fully succeeded.

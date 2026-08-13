@@ -27,12 +27,23 @@ const DEFAULT_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 // per-item index/id field the way Voyage/OpenAI's `data[].index` provides.
 // Unlike those two adapters, this one cannot defensively re-sort a reordered
 // response: it trusts Google's own documented "response order matches
-// request order" contract. The shared `validateProviderResponse` still
-// catches a missing/extra item (a count mismatch); only a same-count
-// silent reorder — which Google's docs give no indication the API ever
-// does — would slip through undetected. This is a known, accepted, and
-// documented limitation of this adapter specifically, not of the shared
-// port design.
+// request order" contract. A missing entry at a given position (e.g.
+// `body.embeddings[index]` undefined) produces an empty vector via the
+// `?.values ?? []` fallback below, which the shared
+// `validateProviderResponse`'s empty-vector check then catches and turns
+// into an `EmbeddingResponseValidationError`; only a same-count silent
+// reorder — which Google's docs give no indication the API ever does —
+// would slip through undetected. (The count-mismatch check in
+// `validateProviderResponse` is not what provides this protection: because
+// this adapter, like Voyage/OpenAI, builds its returned array via
+// `items.map(...)`, the response array's length always equals the request
+// array's length by construction, so that check can never actually fire
+// here — it exists only to guard a hypothetical future adapter that
+// doesn't preserve length.) This is a known, accepted, and documented
+// limitation of this adapter specifically, not of the shared port design.
+// One more deviation worth noting: `baseUrl` here is an API-root-prefix
+// that this adapter appends `/models/{model}:batchEmbedContents` onto, not
+// a complete endpoint URL the way Voyage/OpenAI's `baseUrl` is.
 export class GoogleEmbeddingProviderAdapter implements EmbeddingProviderPort {
   constructor(
     private readonly apiKey: string,
