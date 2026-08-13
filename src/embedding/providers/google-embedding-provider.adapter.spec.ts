@@ -52,11 +52,13 @@ describe('GoogleEmbeddingProviderAdapter', () => {
     ).toBeUndefined();
     const body = JSON.parse(init!.body as string) as {
       requests: {
+        model: string;
         content: { parts: { text: string }[] };
         embedContentConfig: { taskType: string; outputDimensionality: number };
       }[];
     };
     expect(body.requests).toHaveLength(1);
+    expect(body.requests[0]!.model).toBe('models/gemini-embedding-001');
     expect(body.requests[0]!.content.parts[0]!.text).toBe('hello');
     expect(body.requests[0]!.embedContentConfig).toEqual({
       taskType: 'RETRIEVAL_DOCUMENT',
@@ -65,7 +67,7 @@ describe('GoogleEmbeddingProviderAdapter', () => {
   });
 
   it('sends multiple items as multiple requests in one batchEmbedContents call, preserving order positionally', async () => {
-    mockFetchOnce({
+    const fetchSpy = mockFetchOnce({
       status: 200,
       body: {
         embeddings: [{ values: [1, 1, 1, 1] }, { values: [2, 2, 2, 2] }],
@@ -82,6 +84,17 @@ describe('GoogleEmbeddingProviderAdapter', () => {
       { id: 'a', vector: [1, 1, 1, 1] },
       { id: 'b', vector: [2, 2, 2, 2] },
     ]);
+    // Regression guard: Google's real API rejects batchEmbedContents with
+    // "requests[N].model: model is not specified" if this field is missing
+    // from EVERY item, even though the model is already in the URL path —
+    // confirmed against the live API on 2026-08-13. Every item needs it,
+    // not just the first.
+    const [, init] = fetchSpy.mock.calls[0]!;
+    const body = JSON.parse(init!.body as string) as {
+      requests: { model: string }[];
+    };
+    expect(body.requests[0]!.model).toBe('models/gemini-embedding-001');
+    expect(body.requests[1]!.model).toBe('models/gemini-embedding-001');
   });
 
   it('honors a custom baseUrl, constructing the model path against it', async () => {

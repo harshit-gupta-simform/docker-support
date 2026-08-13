@@ -66,6 +66,7 @@ export class GoogleEmbeddingProviderAdapter implements EmbeddingProviderPort {
         },
         body: JSON.stringify({
           requests: items.map((item) => ({
+            model: `models/${this.metadata.model}`,
             content: { parts: [{ text: item.text }] },
             embedContentConfig: {
               taskType: 'RETRIEVAL_DOCUMENT',

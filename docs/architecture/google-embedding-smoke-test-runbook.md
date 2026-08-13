@@ -32,37 +32,32 @@ this specific run is passed as an inline environment override on the
 command line below, not baked into `.env`, so this exact ceiling is
 visible in the command you type every time, not hidden in a file.)
 
-## Step 0: verify the wire shape with two small, tiny live calls
+## Step 0 (RESOLVED — kept for the record): the per-item `model` field
 
-Before running the real 100-chunk batch below, confirm two open questions
-about Google's exact request/response behavior for `gemini-embedding-2`
-specifically. Neither of these calls counts against the 100-chunk cap below
-— each is a single, tiny, bounded request, not a batch.
+**Confirmed against the live API on 2026-08-13, with real chunk content:**
+`batchEmbedContents` genuinely requires a `"model": "models/gemini-embedding-2"`
+field inside **every** `requests[]` entry — omitting it fails with
+`400 INVALID_ARGUMENT`: `"BatchEmbedContentsRequest.requests[N].model: model
+is not specified"`, for every `N`, even though the model is already in the
+URL path. (A quick single-item/short-text check can look like it succeeds
+without this field in some cases — that's exactly why real chunk content is
+what to test with, not a short placeholder string. Confirmed with 2 real
+chunk texts: fails identically at both indices without the field, succeeds
+with real 768-dim vectors returned once it's added.)
 
-**Check A — does a per-item `model` field matter?** Whether each individual
-item in a `batchEmbedContents` request's `requests[]` array needs a
-redundant `"model": "models/gemini-embedding-2"` field, even though the
-model is already in the URL path (Google's docs are ambiguous on this):
+**This is already fixed in the adapter** —
+`src/embedding/providers/google-embedding-provider.adapter.ts`'s `embed()`
+now sends `model: \`models/${this.metadata.model}\``on every request item,
+covered by a regression test in`google-embedding-provider.adapter.spec.ts`. No action needed before
+running "The command" below.
 
-```bash
-curl -s -X POST \
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:batchEmbedContents" \
-  -H "x-goog-api-key: <your real Google API key>" \
-  -H "Content-Type: application/json" \
-  -d '{"requests":[{"content":{"parts":[{"text":"test"}]},"embedContentConfig":{"taskType":"RETRIEVAL_DOCUMENT","outputDimensionality":768}}]}'
-```
+## Step 1: verify the aggregation behavior with one small, tiny live call
 
-- If this returns a `200` with an `embeddings` array, the current adapter
-  shape (no per-item `model` field) is correct — proceed to Check B below
-  with no code changes.
-- If this returns a `400` specifically about a missing/invalid model, add
-  `"model": "models/gemini-embedding-2"` to each `requests[]` entry
-  built in `src/embedding/providers/google-embedding-provider.adapter.ts`'s
-  `embed()` method, then re-run
-  `pnpm test -- google-embedding-provider.adapter.spec.ts` to confirm the
-  change before proceeding to Check B.
+Before running the real 100-chunk batch below, confirm one more thing about
+`gemini-embedding-2` specifically. This call does not count against the
+100-chunk cap below — it's a single, tiny, bounded request, not a batch.
 
-**Check B — does `batchEmbedContents` return one embedding per request
+**Does `batchEmbedContents` return one embedding per request
 object, or does `gemini-embedding-2` aggregate across them?** This model
 introduces a documented aggregation behavior when multiple raw texts are
 passed directly to a single `embedContent` call's `contents` parameter
@@ -80,7 +75,7 @@ curl -s -X POST \
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:batchEmbedContents" \
   -H "x-goog-api-key: <your real Google API key>" \
   -H "Content-Type: application/json" \
-  -d '{"requests":[{"content":{"parts":[{"text":"How do I install Docker?"}]},"embedContentConfig":{"taskType":"RETRIEVAL_DOCUMENT","outputDimensionality":768}},{"content":{"parts":[{"text":"What is the software license?"}]},"embedContentConfig":{"taskType":"RETRIEVAL_DOCUMENT","outputDimensionality":768}}]}'
+  -d '{"requests":[{"model":"models/gemini-embedding-2","content":{"parts":[{"text":"How do I install Docker?"}]},"embedContentConfig":{"taskType":"RETRIEVAL_DOCUMENT","outputDimensionality":768}},{"model":"models/gemini-embedding-2","content":{"parts":[{"text":"What is the software license?"}]},"embedContentConfig":{"taskType":"RETRIEVAL_DOCUMENT","outputDimensionality":768}}]}'
 ```
 
 - **Expected (safe to proceed):** the response's `embeddings` array has
@@ -92,10 +87,10 @@ curl -s -X POST \
 - **If instead you get 1 embedding, or 2 identical/near-identical
   embeddings:** stop — `gemini-embedding-2` is not safe to use with this
   adapter's current batching approach without further changes. Fall back to
-  `gemini-embedding-001` (`EMBEDDING_MODEL=gemini-embedding-001` in "The
-  command" below — no other change needed, the adapter is fully
-  model-agnostic) and re-run both checks against that model instead before
-  proceeding.
+  `gemini-embedding-001` by setting `EMBEDDING_MODEL=gemini-embedding-001`
+  in "The command" below (no code change needed — the adapter is fully
+  model-agnostic, and the `model` field sent per-item already matches
+  whichever model you configure).
 
 ## The command
 
