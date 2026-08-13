@@ -8,6 +8,7 @@ import { EMBEDDING_PROVIDER_PORT } from './embedding-provider.port';
 import { FakeEmbeddingProvider } from './providers/fake-embedding-provider';
 import { VoyageEmbeddingProviderAdapter } from './providers/voyage-embedding-provider.adapter';
 import { OpenAiEmbeddingProviderAdapter } from './providers/openai-embedding-provider.adapter';
+import { GoogleEmbeddingProviderAdapter } from './providers/google-embedding-provider.adapter';
 
 async function buildModule(env: Record<string, string>) {
   process.env = { ...process.env, ...env };
@@ -60,6 +61,17 @@ describe('EmbeddingModule', () => {
 
     expect(moduleRef.get(EMBEDDING_PROVIDER_PORT)).toBeInstanceOf(
       OpenAiEmbeddingProviderAdapter,
+    );
+  });
+
+  it('binds EMBEDDING_PROVIDER_PORT to GoogleEmbeddingProviderAdapter when EMBEDDING_PROVIDER=google', async () => {
+    const moduleRef = await buildModule({
+      EMBEDDING_PROVIDER: 'google',
+      EMBEDDING_API_KEY: 'key',
+    });
+
+    expect(moduleRef.get(EMBEDDING_PROVIDER_PORT)).toBeInstanceOf(
+      GoogleEmbeddingProviderAdapter,
     );
   });
 

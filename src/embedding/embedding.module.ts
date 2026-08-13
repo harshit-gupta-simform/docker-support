@@ -10,6 +10,7 @@ import {
 import { FakeEmbeddingProvider } from './providers/fake-embedding-provider';
 import { OpenAiEmbeddingProviderAdapter } from './providers/openai-embedding-provider.adapter';
 import { VoyageEmbeddingProviderAdapter } from './providers/voyage-embedding-provider.adapter';
+import { GoogleEmbeddingProviderAdapter } from './providers/google-embedding-provider.adapter';
 
 function createEmbeddingProvider(
   config: EmbeddingConfigService,
@@ -39,6 +40,16 @@ function createEmbeddingProvider(
           config.baseUrl,
         )
       : new VoyageEmbeddingProviderAdapter(config.apiKey, metadata);
+  }
+
+  if (config.provider === 'google') {
+    return config.baseUrl
+      ? new GoogleEmbeddingProviderAdapter(
+          config.apiKey,
+          metadata,
+          config.baseUrl,
+        )
+      : new GoogleEmbeddingProviderAdapter(config.apiKey, metadata);
   }
 
   return config.baseUrl
