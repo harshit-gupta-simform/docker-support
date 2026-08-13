@@ -47,9 +47,9 @@ with real 768-dim vectors returned once it's added.)
 
 **This is already fixed in the adapter** —
 `src/embedding/providers/google-embedding-provider.adapter.ts`'s `embed()`
-now sends `model: \`models/${this.metadata.model}\``on every request item,
-covered by a regression test in`google-embedding-provider.adapter.spec.ts`. No action needed before
-running "The command" below.
+now sends a `model` field on every request item, covered by a regression
+test in `google-embedding-provider.adapter.spec.ts`. No action needed
+before running "The command" below.
 
 ## Step 1: verify the aggregation behavior with one small, tiny live call
 
