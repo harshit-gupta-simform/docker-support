@@ -1,7 +1,7 @@
 # Google Embedding Provider — Real-Vector Smoke Test Runbook
 
 **Purpose:** prove the existing M3 embedding pipeline produces correct, genuine
-semantic vectors with a real provider (Google's `gemini-embedding-001`),
+semantic vectors with a real provider (Google's `gemini-embedding-2`),
 using **exactly 100** real chunks from the real Docker docs corpus, without
 risking the free-tier daily quota on the Google API key used to run it.
 
@@ -16,7 +16,7 @@ read its output, and stop if anything looks wrong.
   chunking pipeline against `./data/ingestion-output` if it does not — see
   the M2/M3 session notes for how this was done previously; this plan does
   not recreate that step).
-- You have a real Google AI Studio API key with access to `gemini-embedding-001`.
+- You have a real Google AI Studio API key with access to `gemini-embedding-2`.
 - The following lines are present in your local `.env` (never commit this
   file with a real key in it):
 
@@ -32,33 +32,70 @@ this specific run is passed as an inline environment override on the
 command line below, not baked into `.env`, so this exact ceiling is
 visible in the command you type every time, not hidden in a file.)
 
-## Step 0: verify the wire shape with a single, tiny live call
+## Step 0: verify the wire shape with two small, tiny live calls
 
-Before running the real 100-chunk batch below, confirm one open question
-about Google's exact request shape: whether each individual item in a
-`batchEmbedContents` request's `requests[]` array needs a redundant
-`"model": "models/gemini-embedding-001"` field, even though the model is
-already in the URL path (Google's docs are ambiguous on this). Do this with
-a single, tiny, bounded `curl` request — **not** a batch, and it does not
-count against the 100-chunk cap below:
+Before running the real 100-chunk batch below, confirm two open questions
+about Google's exact request/response behavior for `gemini-embedding-2`
+specifically. Neither of these calls counts against the 100-chunk cap below
+— each is a single, tiny, bounded request, not a batch.
+
+**Check A — does a per-item `model` field matter?** Whether each individual
+item in a `batchEmbedContents` request's `requests[]` array needs a
+redundant `"model": "models/gemini-embedding-2"` field, even though the
+model is already in the URL path (Google's docs are ambiguous on this):
 
 ```bash
 curl -s -X POST \
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents" \
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:batchEmbedContents" \
   -H "x-goog-api-key: <your real Google API key>" \
   -H "Content-Type: application/json" \
   -d '{"requests":[{"content":{"parts":[{"text":"test"}]},"embedContentConfig":{"taskType":"RETRIEVAL_DOCUMENT","outputDimensionality":768}}]}'
 ```
 
 - If this returns a `200` with an `embeddings` array, the current adapter
-  shape (no per-item `model` field) is correct — proceed to "The command"
-  below with no code changes.
+  shape (no per-item `model` field) is correct — proceed to Check B below
+  with no code changes.
 - If this returns a `400` specifically about a missing/invalid model, add
-  `"model": "models/gemini-embedding-001"` to each `requests[]` entry
+  `"model": "models/gemini-embedding-2"` to each `requests[]` entry
   built in `src/embedding/providers/google-embedding-provider.adapter.ts`'s
   `embed()` method, then re-run
   `pnpm test -- google-embedding-provider.adapter.spec.ts` to confirm the
-  change before proceeding to "The command."
+  change before proceeding to Check B.
+
+**Check B — does `batchEmbedContents` return one embedding per request
+object, or does `gemini-embedding-2` aggregate across them?** This model
+introduces a documented aggregation behavior when multiple raw texts are
+passed directly to a single `embedContent` call's `contents` parameter
+(producing one combined embedding instead of one per text) — but our
+adapter doesn't do that; it wraps each chunk as its own separate `content`
+inside its own separate entry of `batchEmbedContents`'s `requests[]` array,
+which is architecturally a different call shape (N independent requests
+bundled into one HTTP round-trip, not one request with N raw inputs).
+Google's docs don't explicitly state whether that distinction guarantees
+N separate embeddings back — confirm it directly with two _different_
+texts in one call:
+
+```bash
+curl -s -X POST \
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:batchEmbedContents" \
+  -H "x-goog-api-key: <your real Google API key>" \
+  -H "Content-Type: application/json" \
+  -d '{"requests":[{"content":{"parts":[{"text":"How do I install Docker?"}]},"embedContentConfig":{"taskType":"RETRIEVAL_DOCUMENT","outputDimensionality":768}},{"content":{"parts":[{"text":"What is the software license?"}]},"embedContentConfig":{"taskType":"RETRIEVAL_DOCUMENT","outputDimensionality":768}}]}'
+```
+
+- **Expected (safe to proceed):** the response's `embeddings` array has
+  exactly 2 entries, and they are clearly different vectors (compare the
+  first few `values` — they should not be identical, and should not both
+  be a suspicious average-looking blend). This confirms `batchEmbedContents`
+  returns one distinct embedding per request object for this model, as our
+  whole pipeline assumes.
+- **If instead you get 1 embedding, or 2 identical/near-identical
+  embeddings:** stop — `gemini-embedding-2` is not safe to use with this
+  adapter's current batching approach without further changes. Fall back to
+  `gemini-embedding-001` (`EMBEDDING_MODEL=gemini-embedding-001` in "The
+  command" below — no other change needed, the adapter is fully
+  model-agnostic) and re-run both checks against that model instead before
+  proceeding.
 
 ## The command
 
@@ -68,7 +105,7 @@ is a permanent config change:
 
 ```bash
 EMBEDDING_PROVIDER=google \
-EMBEDDING_MODEL=gemini-embedding-001 \
+EMBEDDING_MODEL=gemini-embedding-2 \
 EMBEDDING_MODEL_VERSION=1 \
 EMBEDDING_DIMENSIONS=768 \
 EMBEDDING_INPUT_MAX_TOKENS=2000 \
@@ -83,12 +120,15 @@ pnpm embed ./data/chunks-output
 
 **Why these specific values, beyond the 100-chunk cap:**
 
-- `EMBEDDING_DIMENSIONS=768` — one of Google's three explicitly-recommended
-  Matryoshka checkpoints for `gemini-embedding-001` (768/1536/3072), and the
-  smallest of the three — appropriate for a validation run, not a
-  storage-cost decision that needs revisiting later.
+- `EMBEDDING_DIMENSIONS=768` — within `gemini-embedding-2`'s supported
+  128–3072 output-dimension range, and small — appropriate for a validation
+  run, not a storage-cost decision that needs revisiting later.
+  `gemini-embedding-2` auto-normalizes non-3072-dimension output (unlike
+  `gemini-embedding-001`, which required manual normalization), so 768-dim
+  vectors from this run are already unit vectors, no extra step needed.
 - `EMBEDDING_INPUT_MAX_TOKENS=2000` — Google's real per-text limit for
-  `gemini-embedding-001` is **2048 tokens**, below this project's existing
+  `gemini-embedding-2` is **2048 tokens** (same as `gemini-embedding-001`),
+  below this project's existing
   default of `8000` (safe for the other providers, not for Google). `2000`
   leaves a small margin under the real ceiling. In practice almost nothing
   should actually hit this limit — `'child'`-type chunks are already
@@ -153,17 +193,14 @@ pnpm embed ./data/chunks-output
    (a five-line Node script is enough), and confirm the related pair scores
    higher than the unrelated pair. This is the actual proof that these are
    _real_ semantic embeddings, not just successfully-shaped API responses.
-   Note: at 768 dimensions, `gemini-embedding-001`'s output vectors are
-   **not** unit-normalized by the API (per Google's own docs — only the
-   full 3072-dimension output is). This cosine-similarity check doesn't
-   need normalization since cosine similarity is scale-invariant, but if a
-   future vector store needs unit vectors (e.g. for a dot-product-based
-   similarity index), normalize these at ingestion time.
+   (`gemini-embedding-2`'s 768-dim output is already unit-normalized by the
+   API — no extra normalization step needed here or for a future
+   dot-product-based vector-store index, unlike `gemini-embedding-001`.)
 
 ## If something goes wrong
 
 - **401/403 error:** your API key is invalid or lacks access to
-  `gemini-embedding-001` — fix the key before re-running, don't retry
+  `gemini-embedding-2` — fix the key before re-running, don't retry
   blindly.
 - **429 rate limited on the very first batch:** your account's actual
   current free-tier limits are stricter than assumed — stop, check
