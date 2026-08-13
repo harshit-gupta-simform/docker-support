@@ -47,6 +47,7 @@ export interface EmbeddingRunResult {
   skippedByType: number;
   skippedEmpty: number;
   alreadyEmbedded: number;
+  skippedByMaxChunksCap: number;
   attempted: number;
   succeeded: number;
   failed: number;

@@ -73,6 +73,7 @@ function buildConfig(
     includeHeadingContext: false,
     chunkTypes: ['child'],
     failureThreshold: 0.5,
+    maxChunksPerRun: 0,
     ...overrides,
   } as EmbeddingConfigService;
 }
@@ -178,6 +179,7 @@ describe('EmbeddingPipelineService', () => {
       result.skippedByType +
         result.skippedEmpty +
         result.alreadyEmbedded +
+        result.skippedByMaxChunksCap +
         result.attempted,
     );
   });
@@ -280,6 +282,69 @@ describe('EmbeddingPipelineService', () => {
 
     expect(result.totalChunksScanned).toBe(2);
     expect(result.succeeded).toBe(2);
+  });
+
+  it('does not cap the run when EMBEDDING_MAX_CHUNKS_PER_RUN is 0 (unlimited)', async () => {
+    await writeFile(
+      join(chunksDir, 'doc1.chunks.json'),
+      JSON.stringify([
+        buildChunk({ chunkId: 'child1' }),
+        buildChunk({ chunkId: 'child2' }),
+        buildChunk({ chunkId: 'child3' }),
+      ]),
+    );
+    const provider = new FakeEmbeddingProvider(metadata);
+    const pipeline = buildPipeline(provider, { maxChunksPerRun: 0 });
+
+    const result = await pipeline.run(chunksDir);
+
+    expect(result.attempted).toBe(3);
+    expect(result.skippedByMaxChunksCap).toBe(0);
+  });
+
+  it('caps attempted chunks at EMBEDDING_MAX_CHUNKS_PER_RUN and reports the remainder as skippedByMaxChunksCap', async () => {
+    await writeFile(
+      join(chunksDir, 'doc1.chunks.json'),
+      JSON.stringify([
+        buildChunk({ chunkId: 'child1' }),
+        buildChunk({ chunkId: 'child2' }),
+        buildChunk({ chunkId: 'child3' }),
+      ]),
+    );
+    const provider = new FakeEmbeddingProvider(metadata);
+    const pipeline = buildPipeline(provider, { maxChunksPerRun: 2 });
+
+    const result = await pipeline.run(chunksDir);
+
+    expect(result.attempted).toBe(2);
+    expect(result.succeeded).toBe(2);
+    expect(result.skippedByMaxChunksCap).toBe(1);
+    expect(result.totalChunksScanned).toBe(3);
+  });
+
+  it('never attempts more than the cap even across a resumed run', async () => {
+    await writeFile(
+      join(chunksDir, 'doc1.chunks.json'),
+      JSON.stringify([
+        buildChunk({ chunkId: 'child1' }),
+        buildChunk({ chunkId: 'child2' }),
+        buildChunk({ chunkId: 'child3' }),
+      ]),
+    );
+    const provider = new FakeEmbeddingProvider(metadata);
+
+    const firstResult = await buildPipeline(provider, {
+      maxChunksPerRun: 2,
+    }).run(chunksDir);
+    expect(firstResult.attempted).toBe(2);
+
+    const secondResult = await buildPipeline(provider, {
+      maxChunksPerRun: 2,
+    }).run(chunksDir);
+
+    expect(secondResult.alreadyEmbedded).toBe(2);
+    expect(secondResult.attempted).toBe(1);
+    expect(secondResult.skippedByMaxChunksCap).toBe(0);
   });
 });
 

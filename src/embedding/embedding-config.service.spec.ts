@@ -22,6 +22,7 @@ function buildModule(overrides: Partial<EnvConfig> = {}) {
     EMBEDDING_CHUNK_TYPES: ['child'],
     EMBEDDING_OUTPUT_DIR: './data/embedding-output',
     EMBEDDING_FAILURE_THRESHOLD: 0.5,
+    EMBEDDING_MAX_CHUNKS_PER_RUN: 0,
   };
   return Test.createTestingModule({
     providers: [
@@ -58,6 +59,14 @@ describe('EmbeddingConfigService', () => {
     expect(config.chunkTypes).toEqual(['child']);
     expect(config.outputDir).toBe('./data/embedding-output');
     expect(config.failureThreshold).toBe(0.5);
+    expect(config.maxChunksPerRun).toBe(0);
+  });
+
+  it('reflects an overridden EMBEDDING_MAX_CHUNKS_PER_RUN', async () => {
+    const moduleRef = await buildModule({ EMBEDDING_MAX_CHUNKS_PER_RUN: 100 });
+    const config = moduleRef.get(EmbeddingConfigService);
+
+    expect(config.maxChunksPerRun).toBe(100);
   });
 
   it('reflects overridden values', async () => {

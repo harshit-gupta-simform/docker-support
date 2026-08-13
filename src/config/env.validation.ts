@@ -84,6 +84,11 @@ export const envSchema = z
       .pipe(z.array(z.enum(['parent', 'child'])).min(1)),
     EMBEDDING_OUTPUT_DIR: z.string().min(1).default('./data/embedding-output'),
     EMBEDDING_FAILURE_THRESHOLD: z.coerce.number().min(0).max(1).default(0.5),
+    EMBEDDING_MAX_CHUNKS_PER_RUN: z.coerce
+      .number()
+      .int()
+      .nonnegative()
+      .default(0),
   })
   .refine(
     (config) => config.CHUNKING_MIN_CHUNK_SIZE < config.CHUNKING_MAX_CHUNK_SIZE,

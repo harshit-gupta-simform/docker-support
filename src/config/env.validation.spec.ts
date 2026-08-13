@@ -37,6 +37,7 @@ describe('validateEnv', () => {
       EMBEDDING_CHUNK_TYPES: ['child'],
       EMBEDDING_OUTPUT_DIR: './data/embedding-output',
       EMBEDDING_FAILURE_THRESHOLD: 0.5,
+      EMBEDDING_MAX_CHUNKS_PER_RUN: 0,
     });
   });
 
@@ -80,6 +81,7 @@ describe('validateEnv', () => {
       EMBEDDING_CHUNK_TYPES: 'parent,child',
       EMBEDDING_OUTPUT_DIR: '/data/embedding-out',
       EMBEDDING_FAILURE_THRESHOLD: '0.25',
+      EMBEDDING_MAX_CHUNKS_PER_RUN: '50',
     });
 
     expect(result).toEqual({
@@ -115,6 +117,7 @@ describe('validateEnv', () => {
       EMBEDDING_CHUNK_TYPES: ['parent', 'child'],
       EMBEDDING_OUTPUT_DIR: '/data/embedding-out',
       EMBEDDING_FAILURE_THRESHOLD: 0.25,
+      EMBEDDING_MAX_CHUNKS_PER_RUN: 50,
     });
   });
 

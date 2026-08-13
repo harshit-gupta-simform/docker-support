@@ -88,4 +88,10 @@ export class EmbeddingConfigService {
       infer: true,
     });
   }
+
+  get maxChunksPerRun(): number {
+    return this.configService.get('EMBEDDING_MAX_CHUNKS_PER_RUN', {
+      infer: true,
+    });
+  }
 }

@@ -146,8 +146,27 @@ export class EmbeddingPipelineService {
       }
     }
 
+    let skippedByMaxChunksCap = 0;
+    let cappedInputs = eligibleInputs;
+    if (
+      this.config.maxChunksPerRun > 0 &&
+      eligibleInputs.length > this.config.maxChunksPerRun
+    ) {
+      cappedInputs = eligibleInputs.slice(0, this.config.maxChunksPerRun);
+      skippedByMaxChunksCap = eligibleInputs.length - cappedInputs.length;
+      this.logger.warn(
+        {
+          jobId,
+          maxChunksPerRun: this.config.maxChunksPerRun,
+          eligibleCount: eligibleInputs.length,
+          skippedByMaxChunksCap,
+        },
+        'Eligible chunk count exceeds EMBEDDING_MAX_CHUNKS_PER_RUN — truncating this run',
+      );
+    }
+
     const batches = batchEligibleInputs(
-      eligibleInputs,
+      cappedInputs,
       this.config.batchSize,
       this.config.inputMaxTokens * BATCH_TOKEN_BUDGET_MULTIPLIER,
     );
@@ -186,7 +205,7 @@ export class EmbeddingPipelineService {
       ),
     );
 
-    const attempted = eligibleInputs.length;
+    const attempted = cappedInputs.length;
     if (
       attempted > 0 &&
       failures.length / attempted > this.config.failureThreshold
@@ -200,6 +219,7 @@ export class EmbeddingPipelineService {
       skippedByType,
       skippedEmpty,
       alreadyEmbedded,
+      skippedByMaxChunksCap,
       attempted,
       succeeded: succeededCount,
       failed: failures.length,
