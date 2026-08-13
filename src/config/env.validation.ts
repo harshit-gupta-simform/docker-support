@@ -38,7 +38,9 @@ export const envSchema = z
         typeof value === 'boolean' ? value : value === 'true',
       ),
     CHUNKING_OUTPUT_DIR: z.string().min(1).default('./data/chunks-output'),
-    EMBEDDING_PROVIDER: z.enum(['voyage', 'openai', 'fake']).default('voyage'),
+    EMBEDDING_PROVIDER: z
+      .enum(['voyage', 'openai', 'google', 'fake'])
+      .default('voyage'),
     EMBEDDING_MODEL: z.string().min(1).default('voyage-code-3'),
     EMBEDDING_MODEL_VERSION: z.string().min(1).default('1'),
     EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(1024),

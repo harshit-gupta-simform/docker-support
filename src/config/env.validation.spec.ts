@@ -41,6 +41,12 @@ describe('validateEnv', () => {
     });
   });
 
+  it('accepts google as a valid EMBEDDING_PROVIDER', () => {
+    const result = validateEnv({ EMBEDDING_PROVIDER: 'google' });
+
+    expect(result.EMBEDDING_PROVIDER).toBe('google');
+  });
+
   it('coerces PORT from a string to a number', () => {
     const result = validateEnv({ PORT: '4000' });
 
