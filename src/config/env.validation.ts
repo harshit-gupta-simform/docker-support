@@ -91,6 +91,49 @@ export const envSchema = z
       .int()
       .nonnegative()
       .default(0),
+    VECTOR_STORE_PROVIDER: z.enum(['qdrant', 'fake']).default('qdrant'),
+    VECTOR_STORE_URL: z.string().min(1).default('http://localhost:6333'),
+    VECTOR_STORE_API_KEY: z.string().default(''),
+    VECTOR_STORE_DOMAIN: z.string().min(1).default('docker'),
+    VECTOR_STORE_BATCH_SIZE: z.coerce.number().int().positive().default(200),
+    VECTOR_STORE_MAX_CONCURRENT_BATCHES: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(4),
+    VECTOR_STORE_MAX_RETRIES: z.coerce.number().int().positive().default(5),
+    VECTOR_STORE_RETRY_BASE_DELAY_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(200),
+    VECTOR_STORE_RETRY_MAX_DELAY_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(10000),
+    VECTOR_STORE_REQUEST_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(10000),
+    VECTOR_STORE_FAILURE_THRESHOLD: z.coerce
+      .number()
+      .min(0)
+      .max(1)
+      .default(0.5),
+    VECTOR_STORE_SKIP_EXISTING: z
+      .union([z.boolean(), z.enum(['true', 'false'])])
+      .default(true)
+      .transform((value) =>
+        typeof value === 'boolean' ? value : value === 'true',
+      ),
+    VECTOR_STORE_ALLOW_FAKE_PROVIDER: z
+      .union([z.boolean(), z.enum(['true', 'false'])])
+      .default(false)
+      .transform((value) =>
+        typeof value === 'boolean' ? value : value === 'true',
+      ),
   })
   .refine(
     (config) => config.CHUNKING_MIN_CHUNK_SIZE < config.CHUNKING_MAX_CHUNK_SIZE,
@@ -108,6 +151,16 @@ export const envSchema = z
       message:
         'EMBEDDING_RETRY_BASE_DELAY_MS must be less than EMBEDDING_RETRY_MAX_DELAY_MS',
       path: ['EMBEDDING_RETRY_BASE_DELAY_MS'],
+    },
+  )
+  .refine(
+    (config) =>
+      config.VECTOR_STORE_RETRY_BASE_DELAY_MS <
+      config.VECTOR_STORE_RETRY_MAX_DELAY_MS,
+    {
+      message:
+        'VECTOR_STORE_RETRY_BASE_DELAY_MS must be less than VECTOR_STORE_RETRY_MAX_DELAY_MS',
+      path: ['VECTOR_STORE_RETRY_BASE_DELAY_MS'],
     },
   );
 
