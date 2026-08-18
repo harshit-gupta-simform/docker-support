@@ -9,13 +9,16 @@ import {
 } from './embedding-provider.port';
 import { validateProviderResponse } from './embedding-response-validator.util';
 import { deriveEmbeddingId } from './embedding-id.util';
-import { TransientEmbeddingProviderError } from './embedding.errors';
+import { withRetry } from '../common/retry.util';
+import {
+  RateLimitEmbeddingProviderError,
+  TransientEmbeddingProviderError,
+} from './embedding.errors';
 import {
   EmbeddingFailure,
   EmbeddingInput,
   EmbeddingRecord,
 } from './embedding.types';
-import { withRetry } from './retry.util';
 
 export interface EmbeddingBatchOutcome {
   batchId: string;
@@ -52,6 +55,11 @@ export class EmbeddingBatchProcessorService {
           maxAttempts: this.config.maxRetries,
           baseDelayMs: this.config.retryBaseDelayMs,
           maxDelayMs: this.config.retryMaxDelayMs,
+          isRetryable: (err) => err instanceof TransientEmbeddingProviderError,
+          getRetryAfterMs: (err) =>
+            err instanceof RateLimitEmbeddingProviderError
+              ? err.retryAfterMs
+              : null,
         },
       );
 
