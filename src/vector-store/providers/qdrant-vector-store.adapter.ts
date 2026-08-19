@@ -164,6 +164,31 @@ export class QdrantVectorStoreAdapter implements VectorStorePort {
     filter: VectorSearchFilter,
   ): Promise<number> {
     const qdrantFilter = buildQdrantFilter(filter) ?? { must: [] };
+
+    // Count matching points before deleting: Qdrant's delete endpoint does
+    // not report how many points it removed, so we must count first.
+    let countResponse: Response;
+    try {
+      countResponse = await fetch(
+        `${this.url}/collections/${collection}/points/count`,
+        {
+          method: 'POST',
+          headers: this.headers(),
+          body: JSON.stringify({ filter: qdrantFilter }),
+        },
+      );
+    } catch (err) {
+      throw new TransientVectorStoreError('Qdrant count request failed', {
+        cause: err,
+      });
+    }
+    if (!countResponse.ok) throw this.toError(countResponse);
+    const counted = (await countResponse.json()) as {
+      result: { count: number };
+    };
+    const matchCount = counted.result.count;
+    if (matchCount === 0) return 0;
+
     let response: Response;
     try {
       response = await fetch(
@@ -181,19 +206,7 @@ export class QdrantVectorStoreAdapter implements VectorStorePort {
     }
     if (!response.ok) throw this.toError(response);
 
-    const countResponse = await fetch(
-      `${this.url}/collections/${collection}/points/count`,
-      {
-        method: 'POST',
-        headers: this.headers(),
-        body: JSON.stringify({ filter: qdrantFilter }),
-      },
-    );
-    if (!countResponse.ok) return 0;
-    const counted = (await countResponse.json()) as {
-      result: { points_count: number };
-    };
-    return counted.result.points_count;
+    return matchCount;
   }
 
   private headers(): Record<string, string> {

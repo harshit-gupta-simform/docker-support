@@ -145,13 +145,23 @@ describe('QdrantVectorStoreAdapter', () => {
   });
 
   it('deleteByFilter POSTs a filter and returns the reported deleted count', async () => {
+    mockFetchOnce(200, { result: { count: 3 } });
     mockFetchOnce(200, { result: { status: 'completed' } });
-    mockFetchOnce(200, { result: { points_count: 3 } });
     const adapter = new QdrantVectorStoreAdapter('http://localhost:6333', '');
 
     const deleted = await adapter.deleteByFilter('c', { documentId: 'doc1' });
 
     expect(deleted).toBe(3);
+  });
+
+  it('deleteByFilter skips the delete call and returns 0 when nothing matches', async () => {
+    mockFetchOnce(200, { result: { count: 0 } });
+    const adapter = new QdrantVectorStoreAdapter('http://localhost:6333', '');
+
+    const deleted = await adapter.deleteByFilter('c', { documentId: 'doc1' });
+
+    expect(deleted).toBe(0);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 
   it('maps a 429 response to RateLimit-classified TransientVectorStoreError with retryAfterMs', async () => {
