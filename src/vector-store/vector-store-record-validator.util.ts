@@ -3,7 +3,12 @@ import { VectorStoreValidationError } from './vector-store.errors';
 
 export function validateRecordForIndexing(
   record: EmbeddingRecord,
-  target: { dimensions: number },
+  target: {
+    provider: string;
+    model: string;
+    modelVersion: string;
+    dimensions: number;
+  },
   options: { allowFakeProvider: boolean },
 ): void {
   if (record.provider === 'fake' && !options.allowFakeProvider) {
@@ -12,9 +17,14 @@ export function validateRecordForIndexing(
     );
   }
 
-  if (record.dimensions !== target.dimensions) {
+  if (
+    record.provider !== target.provider ||
+    record.model !== target.model ||
+    record.modelVersion !== target.modelVersion ||
+    record.dimensions !== target.dimensions
+  ) {
     throw new VectorStoreValidationError(
-      `Embedding record for chunkId="${record.chunkId}" has ${record.dimensions} dimensions, but the target collection expects ${target.dimensions}`,
+      `Embedding record for chunkId="${record.chunkId}" was produced by provider=${record.provider}/model=${record.model}/modelVersion=${record.modelVersion}/dimensions=${record.dimensions}, but this indexing run is configured for provider=${target.provider}/model=${target.model}/modelVersion=${target.modelVersion}/dimensions=${target.dimensions}`,
     );
   }
 

@@ -5,6 +5,7 @@ import { VectorStoreConfigService } from './vector-store-config.service';
 import { VECTOR_STORE_PORT, VectorStorePort } from './vector-store.port';
 import { FakeVectorStoreAdapter } from './providers/fake-vector-store.adapter';
 import { QdrantVectorStoreAdapter } from './providers/qdrant-vector-store.adapter';
+import { EmbeddingConfigService } from '../embedding/embedding-config.service';
 
 function createVectorStore(config: VectorStoreConfigService): VectorStorePort {
   if (config.provider === 'fake') {
@@ -16,6 +17,7 @@ function createVectorStore(config: VectorStoreConfigService): VectorStorePort {
 @Module({
   providers: [
     VectorStoreConfigService,
+    EmbeddingConfigService,
     {
       provide: VECTOR_STORE_PORT,
       useFactory: createVectorStore,

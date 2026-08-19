@@ -9,6 +9,7 @@ import { FakeVectorStoreAdapter } from './providers/fake-vector-store.adapter';
 import { VectorStoreThresholdExceededError } from './vector-store.errors';
 import { Chunk } from '../chunking/chunking.types';
 import { EmbeddingRecord } from '../embedding/embedding.types';
+import { EmbeddingConfigService } from '../embedding/embedding-config.service';
 
 function buildChunk(overrides: Partial<Chunk> = {}): Chunk {
   return {
@@ -79,6 +80,18 @@ function buildConfig(
   } as VectorStoreConfigService;
 }
 
+function buildEmbeddingConfig(
+  overrides: Partial<EmbeddingConfigService> = {},
+): EmbeddingConfigService {
+  return {
+    provider: 'google',
+    model: 'gemini-embedding-2',
+    modelVersion: '1',
+    dimensions: 3,
+    ...overrides,
+  } as EmbeddingConfigService;
+}
+
 function buildLogger(): PinoLogger {
   return {
     setContext: jest.fn(),
@@ -138,6 +151,7 @@ describe('IndexingPipelineService', () => {
       config,
       store,
       batchProcessor,
+      buildEmbeddingConfig(),
       logger,
     );
 
@@ -173,6 +187,7 @@ describe('IndexingPipelineService', () => {
       config,
       store,
       batchProcessor,
+      buildEmbeddingConfig(),
       logger,
     );
 
@@ -202,6 +217,7 @@ describe('IndexingPipelineService', () => {
       config,
       store,
       batchProcessor,
+      buildEmbeddingConfig(),
       logger,
     );
 
@@ -212,6 +228,50 @@ describe('IndexingPipelineService', () => {
     );
 
     expect(result.skippedFakeProvider).toBe(1);
+    expect(result.attempted).toBe(0);
+  });
+
+  it('skips a record whose provider/model/modelVersion do not match the configured embedding provider, even when dimensions match', async () => {
+    const { chunksDir, embeddingsFile } = await writeFixtures(
+      root,
+      [buildChunk()],
+      [
+        buildRecord({
+          provider: 'voyage',
+          model: 'voyage-code-3',
+          modelVersion: '1',
+          dimensions: 3,
+        }),
+      ],
+    );
+    const store = new FakeVectorStoreAdapter();
+    const config = buildConfig();
+    const logger = buildLogger();
+    const batchProcessor = new IndexingBatchProcessorService(
+      store,
+      config,
+      logger,
+    );
+    const pipeline = new IndexingPipelineService(
+      config,
+      store,
+      batchProcessor,
+      buildEmbeddingConfig({
+        provider: 'google',
+        model: 'gemini-embedding-2',
+        modelVersion: '1',
+        dimensions: 3,
+      }),
+      logger,
+    );
+
+    const result = await pipeline.run(
+      embeddingsFile,
+      chunksDir,
+      'docker__google_v1',
+    );
+
+    expect(result.skippedByProvenanceMismatch).toBe(1);
     expect(result.attempted).toBe(0);
   });
 
@@ -247,6 +307,7 @@ describe('IndexingPipelineService', () => {
       config,
       store,
       batchProcessor,
+      buildEmbeddingConfig(),
       logger,
     );
 

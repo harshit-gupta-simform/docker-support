@@ -1,4 +1,5 @@
 import { FakeVectorStoreAdapter } from './fake-vector-store.adapter';
+import { VectorStoreValidationError } from '../vector-store.errors';
 import { VectorPoint } from '../vector-store.types';
 
 function buildPoint(overrides: Partial<VectorPoint> = {}): VectorPoint {
@@ -160,6 +161,20 @@ describe('FakeVectorStoreAdapter', () => {
     expect(await store.collectionInfo('c')).toEqual({
       dimensions: 3,
       pointCount: 1,
+    });
+  });
+
+  it('deleteByFilter rejects an empty filter instead of deleting the whole collection', async () => {
+    const store = new FakeVectorStoreAdapter();
+    await store.ensureCollection('c', 3);
+    await store.upsert('c', [buildPoint({ id: 'a' }), buildPoint({ id: 'b' })]);
+
+    await expect(store.deleteByFilter('c', {})).rejects.toThrow(
+      VectorStoreValidationError,
+    );
+    expect(await store.collectionInfo('c')).toEqual({
+      dimensions: 3,
+      pointCount: 2,
     });
   });
 });

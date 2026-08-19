@@ -2,6 +2,7 @@ import { VectorStorePort } from '../vector-store.port';
 import {
   PermanentVectorStoreError,
   TransientVectorStoreError,
+  VectorStoreValidationError,
 } from '../vector-store.errors';
 import {
   CollectionInfo,
@@ -163,7 +164,12 @@ export class QdrantVectorStoreAdapter implements VectorStorePort {
     collection: string,
     filter: VectorSearchFilter,
   ): Promise<number> {
-    const qdrantFilter = buildQdrantFilter(filter) ?? { must: [] };
+    const qdrantFilter = buildQdrantFilter(filter);
+    if (!qdrantFilter) {
+      throw new VectorStoreValidationError(
+        'deleteByFilter requires at least one filter condition — refusing to delete an entire collection implicitly',
+      );
+    }
 
     // Count matching points before deleting: Qdrant's delete endpoint does
     // not report how many points it removed, so we must count first.

@@ -1,4 +1,5 @@
 import { VectorStorePort } from '../vector-store.port';
+import { VectorStoreValidationError } from '../vector-store.errors';
 import {
   CollectionInfo,
   VectorPoint,
@@ -105,6 +106,17 @@ export class FakeVectorStoreAdapter implements VectorStorePort {
     collection: string,
     filter: VectorSearchFilter,
   ): Promise<number> {
+    if (
+      filter.domain === undefined &&
+      filter.documentId === undefined &&
+      filter.chunkType === undefined &&
+      filter.sourcePath === undefined
+    ) {
+      throw new VectorStoreValidationError(
+        'deleteByFilter requires at least one filter condition — refusing to delete an entire collection implicitly',
+      );
+    }
+
     const found = this.collections.get(collection);
     if (!found) return 0;
 

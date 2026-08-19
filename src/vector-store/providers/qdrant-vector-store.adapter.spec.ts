@@ -2,6 +2,7 @@ import { QdrantVectorStoreAdapter } from './qdrant-vector-store.adapter';
 import {
   PermanentVectorStoreError,
   TransientVectorStoreError,
+  VectorStoreValidationError,
 } from '../vector-store.errors';
 import { VectorPoint } from '../vector-store.types';
 
@@ -162,6 +163,16 @@ describe('QdrantVectorStoreAdapter', () => {
 
     expect(deleted).toBe(0);
     expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('deleteByFilter rejects an empty filter instead of deleting the whole collection', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch');
+    const adapter = new QdrantVectorStoreAdapter('http://localhost:6333', '');
+
+    await expect(adapter.deleteByFilter('c', {})).rejects.toThrow(
+      VectorStoreValidationError,
+    );
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it('maps a 429 response to RateLimit-classified TransientVectorStoreError with retryAfterMs', async () => {

@@ -147,6 +147,24 @@ describe('RetrievalService', () => {
     ).rejects.toThrow(RetrievalValidationError);
   });
 
+  it('throws RetrievalValidationError naming the collection when it does not exist', async () => {
+    const store = new FakeVectorStoreAdapter();
+    const provider = new FakeEmbeddingProvider(metadata);
+    const service = new RetrievalService(
+      provider,
+      store,
+      buildConfig(),
+      buildLogger(),
+    );
+
+    await expect(
+      service.retrieve({ text: 'q', domain: 'docker' }, 'never-created'),
+    ).rejects.toThrow(RetrievalValidationError);
+    await expect(
+      service.retrieve({ text: 'q', domain: 'docker' }, 'never-created'),
+    ).rejects.toThrow(/never-created/);
+  });
+
   it('throws RetrievalConfigMismatchError when the target collection dimensions do not match the embedding provider', async () => {
     const store = new FakeVectorStoreAdapter();
     await store.ensureCollection('mismatched', 999);

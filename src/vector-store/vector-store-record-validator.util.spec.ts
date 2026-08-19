@@ -25,14 +25,19 @@ function buildRecord(
   };
 }
 
+const baseTarget = {
+  provider: 'google',
+  model: 'gemini-embedding-2',
+  modelVersion: '1',
+  dimensions: 3,
+};
+
 describe('validateRecordForIndexing', () => {
   it('accepts a valid, dimension-matching, non-fake record', () => {
     expect(() =>
-      validateRecordForIndexing(
-        buildRecord(),
-        { dimensions: 3 },
-        { allowFakeProvider: false },
-      ),
+      validateRecordForIndexing(buildRecord(), baseTarget, {
+        allowFakeProvider: false,
+      }),
     ).not.toThrow();
   });
 
@@ -40,7 +45,37 @@ describe('validateRecordForIndexing', () => {
     expect(() =>
       validateRecordForIndexing(
         buildRecord({ dimensions: 3 }),
-        { dimensions: 768 },
+        { ...baseTarget, dimensions: 768 },
+        { allowFakeProvider: false },
+      ),
+    ).toThrow(VectorStoreValidationError);
+  });
+
+  it('rejects a record whose provider does not match the target configuration', () => {
+    expect(() =>
+      validateRecordForIndexing(
+        buildRecord({ provider: 'voyage' }),
+        baseTarget,
+        { allowFakeProvider: false },
+      ),
+    ).toThrow(VectorStoreValidationError);
+  });
+
+  it('rejects a record whose model does not match the target configuration', () => {
+    expect(() =>
+      validateRecordForIndexing(
+        buildRecord({ model: 'voyage-code-3' }),
+        baseTarget,
+        { allowFakeProvider: false },
+      ),
+    ).toThrow(VectorStoreValidationError);
+  });
+
+  it('rejects a record whose modelVersion does not match the target configuration', () => {
+    expect(() =>
+      validateRecordForIndexing(
+        buildRecord({ modelVersion: '2' }),
+        baseTarget,
         { allowFakeProvider: false },
       ),
     ).toThrow(VectorStoreValidationError);
@@ -48,11 +83,9 @@ describe('validateRecordForIndexing', () => {
 
   it('rejects a fake-provider record unless explicitly allowed', () => {
     expect(() =>
-      validateRecordForIndexing(
-        buildRecord({ provider: 'fake' }),
-        { dimensions: 3 },
-        { allowFakeProvider: false },
-      ),
+      validateRecordForIndexing(buildRecord({ provider: 'fake' }), baseTarget, {
+        allowFakeProvider: false,
+      }),
     ).toThrow(/fake/i);
   });
 
@@ -60,7 +93,7 @@ describe('validateRecordForIndexing', () => {
     expect(() =>
       validateRecordForIndexing(
         buildRecord({ provider: 'fake' }),
-        { dimensions: 3 },
+        { ...baseTarget, provider: 'fake' },
         { allowFakeProvider: true },
       ),
     ).not.toThrow();
@@ -68,11 +101,9 @@ describe('validateRecordForIndexing', () => {
 
   it('rejects an empty vector', () => {
     expect(() =>
-      validateRecordForIndexing(
-        buildRecord({ vector: [] }),
-        { dimensions: 3 },
-        { allowFakeProvider: false },
-      ),
+      validateRecordForIndexing(buildRecord({ vector: [] }), baseTarget, {
+        allowFakeProvider: false,
+      }),
     ).toThrow(VectorStoreValidationError);
   });
 
@@ -80,7 +111,7 @@ describe('validateRecordForIndexing', () => {
     expect(() =>
       validateRecordForIndexing(
         buildRecord({ vector: [0.1, Number.NaN, 0.3] }),
-        { dimensions: 3 },
+        baseTarget,
         { allowFakeProvider: false },
       ),
     ).toThrow(VectorStoreValidationError);

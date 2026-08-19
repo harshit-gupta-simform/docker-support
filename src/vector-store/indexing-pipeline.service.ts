@@ -6,6 +6,7 @@ import { PinoLogger } from 'nestjs-pino';
 import pLimit from 'p-limit';
 import { Chunk } from '../chunking/chunking.types';
 import { EmbeddingRecord } from '../embedding/embedding.types';
+import { EmbeddingConfigService } from '../embedding/embedding-config.service';
 import { IndexingBatchProcessorService } from './indexing-batch-processor.service';
 import { VectorStoreConfigService } from './vector-store-config.service';
 import { VECTOR_STORE_PORT, type VectorStorePort } from './vector-store.port';
@@ -32,6 +33,7 @@ export class IndexingPipelineService {
     private readonly config: VectorStoreConfigService,
     @Inject(VECTOR_STORE_PORT) private readonly store: VectorStorePort,
     private readonly batchProcessor: IndexingBatchProcessorService,
+    private readonly embeddingConfig: EmbeddingConfigService,
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext(IndexingPipelineService.name);
@@ -67,13 +69,18 @@ export class IndexingPipelineService {
     let skippedFakeProvider = 0;
     const points: VectorPoint[] = [];
 
+    const target = {
+      provider: this.embeddingConfig.provider,
+      model: this.embeddingConfig.model,
+      modelVersion: this.embeddingConfig.modelVersion,
+      dimensions: this.embeddingConfig.dimensions,
+    };
+
     for (const record of records) {
       try {
-        validateRecordForIndexing(
-          record,
-          { dimensions },
-          { allowFakeProvider: this.config.allowFakeProvider },
-        );
+        validateRecordForIndexing(record, target, {
+          allowFakeProvider: this.config.allowFakeProvider,
+        });
       } catch (err) {
         if (record.provider === 'fake' && !this.config.allowFakeProvider) {
           skippedFakeProvider += 1;

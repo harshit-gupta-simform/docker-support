@@ -47,22 +47,19 @@ export class RetrievalService {
     }
 
     const collectionInfo = await this.store.collectionInfo(collection);
+    if (collectionInfo === null) {
+      throw new RetrievalValidationError(
+        `Collection "${collection}" does not exist — run "pnpm index" first`,
+      );
+    }
     if (
-      collectionInfo &&
       collectionInfo.dimensions !== this.embeddingProvider.metadata.dimensions
     ) {
-      throw new RetrievalConfigMismatchError(
-        {
-          provider: this.embeddingProvider.metadata.provider,
-          model: this.embeddingProvider.metadata.model,
-          dimensions: collectionInfo.dimensions,
-        },
-        {
-          provider: this.embeddingProvider.metadata.provider,
-          model: this.embeddingProvider.metadata.model,
-          dimensions: this.embeddingProvider.metadata.dimensions,
-        },
-      );
+      throw new RetrievalConfigMismatchError(collectionInfo.dimensions, {
+        provider: this.embeddingProvider.metadata.provider,
+        model: this.embeddingProvider.metadata.model,
+        dimensions: this.embeddingProvider.metadata.dimensions,
+      });
     }
 
     const embedded = await withRetry(() => this.embedQueryWithTimeout(text), {
