@@ -1,12 +1,9 @@
-import {
-  RateLimitEmbeddingProviderError,
-  TransientEmbeddingProviderError,
-} from './embedding.errors';
-
 export interface RetryOptions {
   maxAttempts: number;
   baseDelayMs: number;
   maxDelayMs: number;
+  isRetryable: (err: unknown) => boolean;
+  getRetryAfterMs?: (err: unknown) => number | null;
   sleep?: (ms: number) => Promise<void>;
 }
 
@@ -27,17 +24,11 @@ export async function withRetry<T>(
     } catch (err) {
       attempt += 1;
 
-      if (
-        !(err instanceof TransientEmbeddingProviderError) ||
-        attempt >= options.maxAttempts
-      ) {
+      if (!options.isRetryable(err) || attempt >= options.maxAttempts) {
         throw err;
       }
 
-      const retryAfterMs =
-        err instanceof RateLimitEmbeddingProviderError
-          ? err.retryAfterMs
-          : null;
+      const retryAfterMs = options.getRetryAfterMs?.(err) ?? null;
 
       // A provider's stated wait time is honored close to verbatim (just
       // clamped to our own ceiling) — never jittered, since it isn't a
@@ -52,7 +43,7 @@ export async function withRetry<T>(
         options.maxDelayMs,
       );
       // Jitter to 0.5x-1.0x of the computed value to avoid thundering-herd
-      // retries across concurrent batches (design doc §9).
+      // retries across concurrent batches.
       const jitteredBackoff = backoff * (0.5 + Math.random() * 0.5);
 
       await sleep(jitteredBackoff);
