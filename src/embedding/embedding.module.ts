@@ -73,6 +73,6 @@ function createEmbeddingProvider(
     EmbeddingBatchProcessorService,
     EmbeddingPipelineService,
   ],
-  exports: [EmbeddingPipelineService],
+  exports: [EmbeddingPipelineService, EMBEDDING_PROVIDER_PORT],
 })
 export class EmbeddingModule {}
