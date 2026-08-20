@@ -11,6 +11,9 @@ import { RetrievalResult } from '../retrieval/retrieval.types';
 import {
   TransientLlmProviderError,
   GenerationProviderError,
+  LlmResponseValidationError,
+  RateLimitLlmProviderError,
+  PermanentLlmProviderError,
 } from './llm.errors';
 
 function buildLogger(): PinoLogger {
@@ -164,5 +167,79 @@ describe('GenerationService', () => {
     ).rejects.toMatchObject({
       classification: 'timeout',
     });
+  });
+
+  it('throws GenerationProviderError with classification internal for a response validation failure', async () => {
+    const generate = jest
+      .fn()
+      .mockRejectedValue(new LlmResponseValidationError('empty response'));
+    const service = buildService({
+      metadata: { provider: 'google', model: 'gemini-2.5-flash' },
+      generate,
+    });
+
+    await expect(
+      service.generate('question', [buildResult()]),
+    ).rejects.toMatchObject({
+      classification: 'internal',
+    });
+    expect(generate).toHaveBeenCalledTimes(1);
+  });
+
+  it('throws GenerationProviderError with classification quota after retries are exhausted on a rate limit error', async () => {
+    const generate = jest
+      .fn()
+      .mockRejectedValue(new RateLimitLlmProviderError('rate limited'));
+    const service = buildService({
+      metadata: { provider: 'google', model: 'gemini-2.5-flash' },
+      generate,
+    });
+
+    await expect(
+      service.generate('question', [buildResult()]),
+    ).rejects.toMatchObject({
+      classification: 'quota',
+    });
+    expect(generate).toHaveBeenCalledTimes(2);
+  });
+
+  it('throws GenerationProviderError with classification authentication for a permanent auth error', async () => {
+    const generate = jest
+      .fn()
+      .mockRejectedValue(
+        new PermanentLlmProviderError(
+          'Gemini authentication failed: invalid api key',
+        ),
+      );
+    const service = buildService({
+      metadata: { provider: 'google', model: 'gemini-2.5-flash' },
+      generate,
+    });
+
+    await expect(
+      service.generate('question', [buildResult()]),
+    ).rejects.toMatchObject({
+      classification: 'authentication',
+    });
+    expect(generate).toHaveBeenCalledTimes(1);
+  });
+
+  it('throws GenerationProviderError with classification internal as a fallback for unrecognized permanent errors', async () => {
+    const generate = jest
+      .fn()
+      .mockRejectedValue(
+        new PermanentLlmProviderError('Gemini request failed: model not found'),
+      );
+    const service = buildService({
+      metadata: { provider: 'google', model: 'gemini-2.5-flash' },
+      generate,
+    });
+
+    await expect(
+      service.generate('question', [buildResult()]),
+    ).rejects.toMatchObject({
+      classification: 'internal',
+    });
+    expect(generate).toHaveBeenCalledTimes(1);
   });
 });
