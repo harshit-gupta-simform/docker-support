@@ -149,6 +149,16 @@ export const envSchema = z
       .positive()
       .default(10000),
     RETRIEVAL_MAX_RETRIES: z.coerce.number().int().positive().default(2),
+    LLM_PROVIDER: z.enum(['google', 'fake']).default('google'),
+    LLM_MODEL: z.string().min(1).default('gemini-2.5-flash'),
+    LLM_API_KEY: z.string().default(''),
+    LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
+    LLM_MAX_RETRIES: z.coerce.number().int().positive().default(2),
+    LLM_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(1024),
+    LLM_TEMPERATURE: z.coerce.number().min(0).max(2).default(0.2),
+    LLM_MAX_CONTEXT_CHUNKS: z.coerce.number().int().positive().default(5),
+    LLM_MIN_RETRIEVAL_SCORE: z.coerce.number().min(0).default(0),
+    LLM_MAX_CONTEXT_CHARS: z.coerce.number().int().positive().default(12000),
   })
   .refine(
     (config) => config.CHUNKING_MIN_CHUNK_SIZE < config.CHUNKING_MAX_CHUNK_SIZE,
