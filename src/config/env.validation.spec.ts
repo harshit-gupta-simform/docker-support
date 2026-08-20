@@ -57,6 +57,16 @@ describe('validateEnv', () => {
       RETRIEVAL_EXPAND_TO_PARENT: true,
       RETRIEVAL_REQUEST_TIMEOUT_MS: 10000,
       RETRIEVAL_MAX_RETRIES: 2,
+      LLM_PROVIDER: 'google',
+      LLM_MODEL: 'gemini-2.5-flash',
+      LLM_API_KEY: '',
+      LLM_TIMEOUT_MS: 15000,
+      LLM_MAX_RETRIES: 2,
+      LLM_MAX_OUTPUT_TOKENS: 1024,
+      LLM_TEMPERATURE: 0.2,
+      LLM_MAX_CONTEXT_CHUNKS: 5,
+      LLM_MIN_RETRIEVAL_SCORE: 0,
+      LLM_MAX_CONTEXT_CHARS: 12000,
     });
   });
 
@@ -113,6 +123,16 @@ describe('validateEnv', () => {
       RETRIEVAL_EXPAND_TO_PARENT: 'false',
       RETRIEVAL_REQUEST_TIMEOUT_MS: '15000',
       RETRIEVAL_MAX_RETRIES: '4',
+      LLM_PROVIDER: 'fake',
+      LLM_MODEL: 'custom-model',
+      LLM_API_KEY: 'llm-test-key',
+      LLM_TIMEOUT_MS: '5000',
+      LLM_MAX_RETRIES: '3',
+      LLM_MAX_OUTPUT_TOKENS: '2048',
+      LLM_TEMPERATURE: '0.7',
+      LLM_MAX_CONTEXT_CHUNKS: '8',
+      LLM_MIN_RETRIEVAL_SCORE: '0.4',
+      LLM_MAX_CONTEXT_CHARS: '9000',
     });
 
     expect(result).toEqual({
@@ -168,6 +188,16 @@ describe('validateEnv', () => {
       RETRIEVAL_EXPAND_TO_PARENT: false,
       RETRIEVAL_REQUEST_TIMEOUT_MS: 15000,
       RETRIEVAL_MAX_RETRIES: 4,
+      LLM_PROVIDER: 'fake',
+      LLM_MODEL: 'custom-model',
+      LLM_API_KEY: 'llm-test-key',
+      LLM_TIMEOUT_MS: 5000,
+      LLM_MAX_RETRIES: 3,
+      LLM_MAX_OUTPUT_TOKENS: 2048,
+      LLM_TEMPERATURE: 0.7,
+      LLM_MAX_CONTEXT_CHUNKS: 8,
+      LLM_MIN_RETRIEVAL_SCORE: 0.4,
+      LLM_MAX_CONTEXT_CHARS: 9000,
     });
   });
 
