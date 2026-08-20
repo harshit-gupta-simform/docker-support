@@ -38,5 +38,10 @@ export function extractCitations(
     }
   }
 
-  return ordered.length > 0 ? ordered : chunks.map(toCitationSource);
+  // No fallback to "every sent chunk" here: a model that correctly declines
+  // to answer (insufficient grounding) also cites nothing, and attaching
+  // every retrieved chunk as a "source" to a non-answer is more misleading
+  // than an empty sources array — confirmed against a real Gemini call
+  // during the M5 smoke test (2026-08-20).
+  return ordered;
 }

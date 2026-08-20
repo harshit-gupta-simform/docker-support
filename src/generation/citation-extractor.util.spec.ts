@@ -54,16 +54,16 @@ describe('extractCitations', () => {
     expect(sources[0]!.chunkId).toBe('chunk-S1');
   });
 
-  it('falls back to returning every supplied chunk when no citation markers are present', () => {
+  it('returns no sources when no citation markers are present', () => {
     const chunks = [buildChunk('S1'), buildChunk('S2')];
     const sources = extractCitations('No markers here.', chunks);
-    expect(sources.map((s) => s.chunkId)).toEqual(['chunk-S1', 'chunk-S2']);
+    expect(sources).toEqual([]);
   });
 
-  it('falls back to every supplied chunk when all markers are invalid', () => {
+  it('returns no sources when all markers are invalid', () => {
     const chunks = [buildChunk('S1')];
     const sources = extractCitations('See [S99].', chunks);
-    expect(sources.map((s) => s.chunkId)).toEqual(['chunk-S1']);
+    expect(sources).toEqual([]);
   });
 
   it('substitutes placeholders for missing title/source metadata', () => {
