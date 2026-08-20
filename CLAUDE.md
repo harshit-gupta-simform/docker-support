@@ -20,7 +20,7 @@ There is currently **no HTTP API for RAG itself** — ingestion/chunking/embeddi
 cp .env.example .env && pnpm install   # setup
 pnpm run start:dev                     # run with hot reload
 
-pnpm run build                         # compile to dist/ (required before pnpm run ingest / embed)
+pnpm run build                         # compile to dist/ (required before pnpm run ingest / chunk / embed)
 pnpm run lint                          # eslint --fix over src/test/apps/libs
 pnpm run format                        # prettier over src/ and test/
 
@@ -32,10 +32,11 @@ pnpm run test:e2e                      # e2e tests (separate jest config: test/j
 pnpm run test:e2e -- <pattern>         # single e2e file, e.g. pnpm run test:e2e -- embedding.e2e-spec.ts
 
 pnpm run ingest <path-to-zip>          # run the real ingestion pipeline; writes StructuredDocument JSON to INGESTION_OUTPUT_DIR
+pnpm run chunk [ingestion-output-dir]  # run the real chunking pipeline against StructuredDocument JSON (default ./data/ingestion-output)
 pnpm run embed [chunks-dir]            # run the real embedding pipeline against *.chunks.json (default ./data/chunks-output); requires EMBEDDING_API_KEY unless EMBEDDING_PROVIDER=fake
 ```
 
-`pnpm run ingest`/`pnpm run embed` run compiled `dist/cli/*.js` — rebuild (`pnpm run build`) after any source change before using them.
+`pnpm run ingest`/`pnpm run chunk`/`pnpm run embed` run compiled `dist/cli/*.js` — rebuild (`pnpm run build`) after any source change before using them.
 
 Git hooks (Husky, installed via `prepare` on `pnpm install`): pre-commit runs `lint-staged` (ESLint+Prettier on staged files); commit-msg enforces Conventional Commits via commitlint — non-conforming commit messages are rejected.
 
@@ -54,7 +55,7 @@ ZIP of Markdown docs
   → EmbeddingPipelineService     → data/embedding-output/embeddings.jsonl       (EmbeddingRecord, append-only)
 ```
 
-Each module is invoked either as a NestJS-wired service (`ChunkingModule`, `IngestionModule` in `AppModule`) or via a small standalone CLI in `src/cli/` (`ingest.ts`, `embed.ts`) that boots its own tiny `@Module` (not `AppModule`) via `NestFactory.createApplicationContext`. Chunking has no CLI of its own — it's invoked in-process or via tests only.
+Each module is invoked either as a NestJS-wired service (`ChunkingModule`, `IngestionModule` in `AppModule`) or via a small standalone CLI in `src/cli/` (`ingest.ts`, `chunk.ts`, `embed.ts`) that boots its own tiny `@Module` (not `AppModule`) via `NestFactory.createApplicationContext`. Chunking now has its own CLI (`pnpm run chunk [ingestion-output-dir]`, calling `dist/cli/chunk.js`), mirroring the other stages — it batch-processes every `StructuredDocument` JSON file in the given directory (default `./data/ingestion-output`) via `ChunkingPipelineService.run()`.
 
 ### Conventions repeated across every module (follow them, don't reinvent)
 

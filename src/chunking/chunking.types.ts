@@ -75,6 +75,20 @@ export interface ChunkingResult {
   durationMs: number;
 }
 
+export interface ChunkingBatchFailure {
+  documentId: string;
+  message: string;
+}
+
+export interface ChunkingBatchResult {
+  totalDocuments: number;
+  succeeded: number;
+  failed: number;
+  failures: ChunkingBatchFailure[];
+  outputDir: string;
+  durationMs: number;
+}
+
 // Internal Phase-2 output / Phase-3 input — never exposed outside the module.
 export interface ResolvedPiece {
   section: Section;

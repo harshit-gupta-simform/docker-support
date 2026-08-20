@@ -1,14 +1,24 @@
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import { basename, extname, join } from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 import { StructuredDocument } from '../ingestion/ingestion.types';
 import { ChunkAssemblerService } from './chunk-assembler.service';
 import { ChunkingConfigService } from './chunking-config.service';
-import { EmptyDocumentError } from './chunking.errors';
-import { ChunkingResult, Section } from './chunking.types';
+import {
+  ChunkingThresholdExceededError,
+  EmptyDocumentError,
+} from './chunking.errors';
+import {
+  ChunkingBatchFailure,
+  ChunkingBatchResult,
+  ChunkingResult,
+  Section,
+} from './chunking.types';
 import { MarkdownSectionParserService } from './markdown-section-parser.service';
 import { SectionSizeBounderService } from './section-size-bounder.service';
+
+const FAILURE_THRESHOLD_RATIO = 0.5;
 
 @Injectable()
 export class ChunkingPipelineService {
@@ -92,6 +102,51 @@ export class ChunkingPipelineService {
       'Chunking run completed',
     );
 
+    return result;
+  }
+
+  async run(inputDir: string): Promise<ChunkingBatchResult> {
+    const startedAt = Date.now();
+    const entries = await readdir(inputDir);
+    const jsonFiles = entries.filter((entry) => extname(entry) === '.json');
+
+    const failures: ChunkingBatchFailure[] = [];
+    let succeeded = 0;
+
+    for (const fileName of jsonFiles) {
+      const fallbackDocumentId = basename(fileName, '.json');
+      let documentId = fallbackDocumentId;
+      try {
+        const raw = await readFile(join(inputDir, fileName), 'utf-8');
+        const document = JSON.parse(raw) as StructuredDocument;
+        documentId = document.documentId ?? fallbackDocumentId;
+        await this.chunk(document);
+        succeeded += 1;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        failures.push({ documentId, message });
+        this.logger.warn({ documentId, err }, 'Failed to chunk document');
+      }
+    }
+
+    const attemptedCount = jsonFiles.length;
+    if (
+      attemptedCount > 0 &&
+      failures.length / attemptedCount > FAILURE_THRESHOLD_RATIO
+    ) {
+      throw new ChunkingThresholdExceededError(failures.length, attemptedCount);
+    }
+
+    const result: ChunkingBatchResult = {
+      totalDocuments: attemptedCount,
+      succeeded,
+      failed: failures.length,
+      failures,
+      outputDir: this.config.outputDir,
+      durationMs: Date.now() - startedAt,
+    };
+
+    this.logger.info(result, 'Chunking batch run completed');
     return result;
   }
 

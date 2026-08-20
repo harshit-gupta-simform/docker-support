@@ -18,6 +18,7 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "ingest": "node dist/cli/ingest.js",
+    "chunk": "node dist/cli/chunk.js",
     "embed": "node dist/cli/embed.js",
     "index": "node dist/cli/index.js",
     "query": "node dist/cli/query.js",
