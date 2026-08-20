@@ -6,8 +6,11 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { ChunkingModule } from './chunking/chunking.module';
+import { EmbeddingModule } from './embedding/embedding.module';
 import { HealthModule } from './health/health.module';
 import { IngestionModule } from './ingestion/ingestion.module';
+import { RetrievalModule } from './retrieval/retrieval.module';
+import { VectorStoreModule } from './vector-store/vector-store.module';
 import { validateEnv } from './config/env.validation';
 import { AppConfigService } from './config/app-config.service';
 import { buildPinoHttpOptions } from './config/pino-http-options.factory';
@@ -29,6 +32,9 @@ import { buildPinoHttpOptions } from './config/pino-http-options.factory';
     HealthModule,
     IngestionModule,
     ChunkingModule,
+    EmbeddingModule,
+    VectorStoreModule,
+    RetrievalModule,
   ],
   controllers: [AppController],
   providers: [
