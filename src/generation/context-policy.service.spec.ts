@@ -76,6 +76,19 @@ describe('ContextPolicyService', () => {
     }
   });
 
+  it('keeps the max-score duplicate when deduping by chunkId', () => {
+    const service = new ContextPolicyService(buildConfig());
+    const low = buildResult({ chunkId: 'dup', score: 0.3 });
+    const high = buildResult({ chunkId: 'dup', score: 0.9 });
+    const result = service.select([low, high]);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.chunks).toHaveLength(1);
+      expect(result.chunks[0]!.result.score).toBe(0.9);
+    }
+  });
+
   it('caps the number of selected chunks at maxContextChunks', () => {
     const service = new ContextPolicyService(
       buildConfig({ maxContextChunks: 1 }),

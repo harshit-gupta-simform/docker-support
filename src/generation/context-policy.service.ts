@@ -12,14 +12,14 @@ export class ContextPolicyService {
       return { ok: false, reason: 'no_results' };
     }
 
-    const seen = new Set<string>();
-    const deduped = results.filter((result) => {
-      if (seen.has(result.chunkId)) {
-        return false;
+    const byChunkId = new Map<string, RetrievalResult>();
+    for (const result of results) {
+      const existing = byChunkId.get(result.chunkId);
+      if (!existing || result.score > existing.score) {
+        byChunkId.set(result.chunkId, result);
       }
-      seen.add(result.chunkId);
-      return true;
-    });
+    }
+    const deduped = Array.from(byChunkId.values());
 
     const aboveThreshold = deduped
       .filter((result) => result.score >= this.config.minRetrievalScore)
