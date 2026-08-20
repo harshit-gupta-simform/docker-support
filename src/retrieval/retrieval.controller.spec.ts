@@ -3,6 +3,9 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { EmbeddingConfigService } from '../embedding/embedding-config.service';
+import { GenerationService } from '../generation/generation.service';
+import { GenerationResult } from '../generation/generation.types';
+import { GenerationProviderError } from '../generation/llm.errors';
 import { VectorStoreConfigService } from '../vector-store/vector-store-config.service';
 import { RetrievalController } from './retrieval.controller';
 import {
@@ -10,7 +13,6 @@ import {
   RetrievalValidationError,
 } from './retrieval.errors';
 import { RetrievalService } from './retrieval.service';
-import { RetrievalResult } from './retrieval.types';
 
 function buildVectorStoreConfig(): VectorStoreConfigService {
   return { domain: 'docker' } as VectorStoreConfigService;
@@ -25,31 +27,35 @@ function buildEmbeddingConfig(): EmbeddingConfigService {
   } as EmbeddingConfigService;
 }
 
-function buildResult(
-  overrides: Partial<RetrievalResult> = {},
-): RetrievalResult {
+function buildGenerationResult(): GenerationResult {
   return {
-    chunkId: 'child1',
-    documentId: 'doc1',
-    parentChunkId: null,
-    chunkType: 'child',
-    score: 0.9,
-    text: 'Run docker --version.',
-    parentText: null,
-    headingPath: 'Install',
-    documentTitle: 'Install Docker',
-    sourcePath: 'install.md',
-    domain: 'docker',
-    ...overrides,
+    answer: 'The answer is X [S1].',
+    sources: [
+      {
+        documentId: 'doc1',
+        chunkId: 'child1',
+        title: 'Install Docker',
+        headingPath: 'Install',
+        source: 'install.md',
+        score: 0.9,
+      },
+    ],
+    metadata: {
+      provider: 'fake',
+      framework: 'langchain',
+      model: 'fake-model',
+      retrievedCount: 1,
+    },
   };
 }
 
 describe('RetrievalController', () => {
   it('throws BadRequestException when text is missing', async () => {
     const retrieve = jest.fn();
-    const retrieval = { retrieve } as unknown as RetrievalService;
+    const generate = jest.fn();
     const controller = new RetrievalController(
-      retrieval,
+      { retrieve } as unknown as RetrievalService,
+      { generate } as unknown as GenerationService,
       buildVectorStoreConfig(),
       buildEmbeddingConfig(),
     );
@@ -58,12 +64,13 @@ describe('RetrievalController', () => {
       BadRequestException,
     );
     expect(retrieve).not.toHaveBeenCalled();
+    expect(generate).not.toHaveBeenCalled();
   });
 
   it('throws BadRequestException when text is an empty/whitespace string', async () => {
-    const retrieval = { retrieve: jest.fn() } as unknown as RetrievalService;
     const controller = new RetrievalController(
-      retrieval,
+      { retrieve: jest.fn() } as unknown as RetrievalService,
+      { generate: jest.fn() } as unknown as GenerationService,
       buildVectorStoreConfig(),
       buildEmbeddingConfig(),
     );
@@ -74,9 +81,9 @@ describe('RetrievalController', () => {
   });
 
   it('throws BadRequestException when text is not a string', async () => {
-    const retrieval = { retrieve: jest.fn() } as unknown as RetrievalService;
     const controller = new RetrievalController(
-      retrieval,
+      { retrieve: jest.fn() } as unknown as RetrievalService,
+      { generate: jest.fn() } as unknown as GenerationService,
       buildVectorStoreConfig(),
       buildEmbeddingConfig(),
     );
@@ -86,12 +93,27 @@ describe('RetrievalController', () => {
     );
   });
 
-  it('calls RetrievalService.retrieve with the derived collection name and domain, returning an envelope', async () => {
-    const results = [buildResult()];
-    const retrieve = jest.fn().mockResolvedValue(results);
-    const retrieval = { retrieve } as unknown as RetrievalService;
+  it('throws BadRequestException when text exceeds the maximum length', async () => {
     const controller = new RetrievalController(
-      retrieval,
+      { retrieve: jest.fn() } as unknown as RetrievalService,
+      { generate: jest.fn() } as unknown as GenerationService,
+      buildVectorStoreConfig(),
+      buildEmbeddingConfig(),
+    );
+
+    await expect(
+      controller.query({ text: 'x'.repeat(2001) }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('retrieves then generates, returning the GenerationResult as-is', async () => {
+    const results = [{ chunkId: 'child1' }];
+    const retrieve = jest.fn().mockResolvedValue(results);
+    const generationResult = buildGenerationResult();
+    const generate = jest.fn().mockResolvedValue(generationResult);
+    const controller = new RetrievalController(
+      { retrieve } as unknown as RetrievalService,
+      { generate } as unknown as GenerationService,
       buildVectorStoreConfig(),
       buildEmbeddingConfig(),
     );
@@ -104,20 +126,17 @@ describe('RetrievalController', () => {
       { text: 'how do I install docker?', domain: 'docker' },
       'docker__fake_fake_model_4d_v1',
     );
-    expect(response).toEqual({
-      collection: 'docker__fake_fake_model_4d_v1',
-      count: 1,
-      results,
-    });
+    expect(generate).toHaveBeenCalledWith('how do I install docker?', results);
+    expect(response).toEqual(generationResult);
   });
 
   it('maps RetrievalValidationError from the service to BadRequestException', async () => {
     const retrieve = jest
       .fn()
       .mockRejectedValue(new RetrievalValidationError('bad query'));
-    const retrieval = { retrieve } as unknown as RetrievalService;
     const controller = new RetrievalController(
-      retrieval,
+      { retrieve } as unknown as RetrievalService,
+      { generate: jest.fn() } as unknown as GenerationService,
       buildVectorStoreConfig(),
       buildEmbeddingConfig(),
     );
@@ -135,9 +154,26 @@ describe('RetrievalController', () => {
         dimensions: 4,
       }),
     );
-    const retrieval = { retrieve } as unknown as RetrievalService;
     const controller = new RetrievalController(
-      retrieval,
+      { retrieve } as unknown as RetrievalService,
+      { generate: jest.fn() } as unknown as GenerationService,
+      buildVectorStoreConfig(),
+      buildEmbeddingConfig(),
+    );
+
+    await expect(controller.query({ text: 'hello' })).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+  });
+
+  it('maps GenerationProviderError from the service to ServiceUnavailableException', async () => {
+    const retrieve = jest.fn().mockResolvedValue([]);
+    const generate = jest
+      .fn()
+      .mockRejectedValue(new GenerationProviderError('boom', 'provider'));
+    const controller = new RetrievalController(
+      { retrieve } as unknown as RetrievalService,
+      { generate } as unknown as GenerationService,
       buildVectorStoreConfig(),
       buildEmbeddingConfig(),
     );
@@ -150,9 +186,9 @@ describe('RetrievalController', () => {
   it('lets an unrecognized error type propagate unchanged', async () => {
     const boom = new Error('unexpected');
     const retrieve = jest.fn().mockRejectedValue(boom);
-    const retrieval = { retrieve } as unknown as RetrievalService;
     const controller = new RetrievalController(
-      retrieval,
+      { retrieve } as unknown as RetrievalService,
+      { generate: jest.fn() } as unknown as GenerationService,
       buildVectorStoreConfig(),
       buildEmbeddingConfig(),
     );
