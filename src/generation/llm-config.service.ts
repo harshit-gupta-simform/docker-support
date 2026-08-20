@@ -45,4 +45,8 @@ export class LlmConfigService {
   get maxContextChars(): number {
     return this.configService.get('LLM_MAX_CONTEXT_CHARS', { infer: true });
   }
+
+  get thinkingLevel(): EnvConfig['LLM_THINKING_LEVEL'] {
+    return this.configService.get('LLM_THINKING_LEVEL', { infer: true });
+  }
 }

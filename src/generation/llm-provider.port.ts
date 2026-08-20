@@ -10,6 +10,7 @@ export interface LlmGenerationRequest {
   userPrompt: string;
   maxOutputTokens: number;
   temperature: number;
+  thinkingLevel?: 'LOW' | 'MEDIUM' | 'HIGH';
 }
 
 export interface LlmGenerationResponse {

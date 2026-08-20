@@ -159,6 +159,7 @@ export const envSchema = z
     LLM_MAX_CONTEXT_CHUNKS: z.coerce.number().int().positive().default(5),
     LLM_MIN_RETRIEVAL_SCORE: z.coerce.number().min(0).default(0),
     LLM_MAX_CONTEXT_CHARS: z.coerce.number().int().positive().default(12000),
+    LLM_THINKING_LEVEL: z.enum(['', 'LOW', 'MEDIUM', 'HIGH']).default(''),
   })
   .refine(
     (config) => config.CHUNKING_MIN_CHUNK_SIZE < config.CHUNKING_MAX_CHUNK_SIZE,

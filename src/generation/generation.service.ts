@@ -123,6 +123,9 @@ export class GenerationService {
         userPrompt: prompt.userPrompt,
         maxOutputTokens: this.config.maxOutputTokens,
         temperature: this.config.temperature,
+        ...(this.config.thinkingLevel
+          ? { thinkingLevel: this.config.thinkingLevel }
+          : {}),
       }),
       timeoutPromise,
     ]).finally(() => clearTimeout(timeoutHandle));

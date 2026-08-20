@@ -30,6 +30,9 @@ export class LangChainGoogleGenerativeAiProvider implements LlmProviderPort {
       model: this.metadata.model,
       temperature: request.temperature,
       maxOutputTokens: request.maxOutputTokens,
+      ...(request.thinkingLevel
+        ? { thinkingConfig: { thinkingLevel: request.thinkingLevel } }
+        : {}),
     });
 
     let response: { content: unknown; response_metadata?: unknown };

@@ -67,6 +67,7 @@ describe('validateEnv', () => {
       LLM_MAX_CONTEXT_CHUNKS: 5,
       LLM_MIN_RETRIEVAL_SCORE: 0,
       LLM_MAX_CONTEXT_CHARS: 12000,
+      LLM_THINKING_LEVEL: '',
     });
   });
 
@@ -133,6 +134,7 @@ describe('validateEnv', () => {
       LLM_MAX_CONTEXT_CHUNKS: '8',
       LLM_MIN_RETRIEVAL_SCORE: '0.4',
       LLM_MAX_CONTEXT_CHARS: '9000',
+      LLM_THINKING_LEVEL: 'LOW',
     });
 
     expect(result).toEqual({
@@ -198,6 +200,7 @@ describe('validateEnv', () => {
       LLM_MAX_CONTEXT_CHUNKS: 8,
       LLM_MIN_RETRIEVAL_SCORE: 0.4,
       LLM_MAX_CONTEXT_CHARS: 9000,
+      LLM_THINKING_LEVEL: 'LOW',
     });
   });
 

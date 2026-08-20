@@ -15,6 +15,7 @@ function buildModule(overrides: Partial<EnvConfig> = {}) {
     LLM_MAX_CONTEXT_CHUNKS: 5,
     LLM_MIN_RETRIEVAL_SCORE: 0,
     LLM_MAX_CONTEXT_CHARS: 12000,
+    LLM_THINKING_LEVEL: '',
   };
   return Test.createTestingModule({
     providers: [
@@ -42,6 +43,7 @@ describe('LlmConfigService', () => {
       LLM_MAX_CONTEXT_CHUNKS: 8,
       LLM_MIN_RETRIEVAL_SCORE: 0.3,
       LLM_MAX_CONTEXT_CHARS: 8000,
+      LLM_THINKING_LEVEL: 'LOW',
     });
     const config = moduleRef.get(LlmConfigService);
 
@@ -55,5 +57,6 @@ describe('LlmConfigService', () => {
     expect(config.maxContextChunks).toBe(8);
     expect(config.minRetrievalScore).toBe(0.3);
     expect(config.maxContextChars).toBe(8000);
+    expect(config.thinkingLevel).toBe('LOW');
   });
 });

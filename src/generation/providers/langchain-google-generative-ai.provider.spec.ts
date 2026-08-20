@@ -1,3 +1,4 @@
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { LangChainGoogleGenerativeAiProvider } from './langchain-google-generative-ai.provider';
 import {
   LlmResponseValidationError,
@@ -13,6 +14,12 @@ jest.mock('@langchain/google-genai', () => ({
     invoke: mockInvoke,
   })),
 }));
+
+const mockChatGoogleGenerativeAI =
+  ChatGoogleGenerativeAI as unknown as jest.Mock<
+    unknown,
+    [Record<string, unknown>]
+  >;
 
 const request = {
   systemPrompt: 'system',
@@ -37,6 +44,35 @@ describe('LangChainGoogleGenerativeAiProvider', () => {
 
     const response = await provider.generate(request);
     expect(response.text).toBe('the answer');
+  });
+
+  it('passes thinkingConfig through when the request specifies a thinkingLevel', async () => {
+    mockInvoke.mockResolvedValue({
+      content: 'the answer',
+      response_metadata: {},
+    });
+    const provider = new LangChainGoogleGenerativeAiProvider('key', metadata);
+
+    await provider.generate({ ...request, thinkingLevel: 'LOW' });
+
+    expect(mockChatGoogleGenerativeAI).toHaveBeenCalledWith(
+      expect.objectContaining({
+        thinkingConfig: { thinkingLevel: 'LOW' },
+      }),
+    );
+  });
+
+  it('omits thinkingConfig entirely when the request has no thinkingLevel', async () => {
+    mockInvoke.mockResolvedValue({
+      content: 'the answer',
+      response_metadata: {},
+    });
+    const provider = new LangChainGoogleGenerativeAiProvider('key', metadata);
+
+    await provider.generate(request);
+
+    const constructorArgs = mockChatGoogleGenerativeAI.mock.calls[0]![0];
+    expect(constructorArgs).not.toHaveProperty('thinkingConfig');
   });
 
   it('joins array-of-parts content', async () => {
