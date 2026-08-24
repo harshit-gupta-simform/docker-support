@@ -29,12 +29,18 @@ export function extractCitations(
   const cited = new Set<string>();
   const ordered: CitationSource[] = [];
 
-  for (const match of answerText.matchAll(/\[S(\d+)]/g)) {
-    const sourceId = `S${match[1]}`;
-    const chunk = bySourceId.get(sourceId);
-    if (chunk !== undefined && !cited.has(sourceId)) {
-      cited.add(sourceId);
-      ordered.push(toCitationSource(chunk));
+  // Match each bracketed group first (e.g. "[S1]" or "[S1, S3]"), then pull
+  // every "S<n>" out of that group — handles both a single citation and
+  // Gemini's occasional comma-separated combined-citation format, which a
+  // single-shot "[S(\d+)]" regex cannot match at all.
+  for (const bracket of answerText.matchAll(/\[([^\]]*)]/g)) {
+    for (const idMatch of bracket[1]!.matchAll(/S(\d+)/g)) {
+      const sourceId = `S${idMatch[1]}`;
+      const chunk = bySourceId.get(sourceId);
+      if (chunk !== undefined && !cited.has(sourceId)) {
+        cited.add(sourceId);
+        ordered.push(toCitationSource(chunk));
+      }
     }
   }
 

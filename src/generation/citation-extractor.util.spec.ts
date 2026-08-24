@@ -47,6 +47,12 @@ describe('extractCitations', () => {
     expect(sources.map((s) => s.chunkId)).toEqual(['chunk-S2', 'chunk-S1']);
   });
 
+  it('extracts multiple citations combined in one bracket', () => {
+    const chunks = [buildChunk('S1'), buildChunk('S3')];
+    const sources = extractCitations('Shared in real time [S1, S3].', chunks);
+    expect(sources.map((s) => s.chunkId)).toEqual(['chunk-S1', 'chunk-S3']);
+  });
+
   it('discards citation IDs that do not match any known source', () => {
     const chunks = [buildChunk('S1')];
     const sources = extractCitations('See [S1] and [S99].', chunks);
