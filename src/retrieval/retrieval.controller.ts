@@ -10,7 +10,10 @@ import {
 import { EmbeddingConfigService } from '../embedding/embedding-config.service';
 import { GenerationService } from '../generation/generation.service';
 import { GenerationResult } from '../generation/generation.types';
-import { GenerationProviderError } from '../generation/llm.errors';
+import {
+  GenerationProviderError,
+  PromptTokenLimitExceededError,
+} from '../generation/llm.errors';
 import { deriveCollectionName } from '../vector-store/vector-store-collection-name.util';
 import { VectorStoreConfigService } from '../vector-store/vector-store-config.service';
 import { validateQueryText } from './query-request.validator';
@@ -61,6 +64,9 @@ export class RetrievalController {
       return await this.generation.generate(text, results);
     } catch (err) {
       if (err instanceof RetrievalValidationError) {
+        throw new BadRequestException(err.message);
+      }
+      if (err instanceof PromptTokenLimitExceededError) {
         throw new BadRequestException(err.message);
       }
       if (

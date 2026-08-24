@@ -5,7 +5,10 @@ import {
 import { EmbeddingConfigService } from '../embedding/embedding-config.service';
 import { GenerationService } from '../generation/generation.service';
 import { GenerationResult } from '../generation/generation.types';
-import { GenerationProviderError } from '../generation/llm.errors';
+import {
+  GenerationProviderError,
+  PromptTokenLimitExceededError,
+} from '../generation/llm.errors';
 import { VectorStoreConfigService } from '../vector-store/vector-store-config.service';
 import { RetrievalController } from './retrieval.controller';
 import {
@@ -180,6 +183,23 @@ describe('RetrievalController', () => {
 
     await expect(controller.query({ text: 'hello' })).rejects.toBeInstanceOf(
       ServiceUnavailableException,
+    );
+  });
+
+  it('maps PromptTokenLimitExceededError from the service to BadRequestException', async () => {
+    const retrieve = jest.fn().mockResolvedValue([]);
+    const generate = jest
+      .fn()
+      .mockRejectedValue(new PromptTokenLimitExceededError(9000, 8000));
+    const controller = new RetrievalController(
+      { retrieve } as unknown as RetrievalService,
+      { generate } as unknown as GenerationService,
+      buildVectorStoreConfig(),
+      buildEmbeddingConfig(),
+    );
+
+    await expect(controller.query({ text: 'hello' })).rejects.toBeInstanceOf(
+      BadRequestException,
     );
   });
 
