@@ -14,6 +14,7 @@ import {
   LlmResponseValidationError,
   RateLimitLlmProviderError,
   PermanentLlmProviderError,
+  PromptTokenLimitExceededError,
 } from './llm.errors';
 
 function buildLogger(): PinoLogger {
@@ -36,6 +37,9 @@ function buildConfig(
     maxOutputTokens: 100,
     temperature: 0.2,
     timeoutMs: 200,
+    maxPromptTokens: 100000,
+    inputPricePerMillionTokens: 0.75,
+    outputPricePerMillionTokens: 3.75,
     ...overrides,
   } as LlmConfigService;
 }
@@ -241,5 +245,67 @@ describe('GenerationService', () => {
       classification: 'internal',
     });
     expect(generate).toHaveBeenCalledTimes(1);
+  });
+
+  it('throws PromptTokenLimitExceededError without calling the LLM when the estimated prompt exceeds the configured limit', async () => {
+    const generate = jest.fn();
+    const config = buildConfig({ maxPromptTokens: 1 });
+    const service = buildService(
+      {
+        metadata: { provider: 'google', model: 'gemini-3.6-flash' },
+        generate,
+      },
+      config,
+    );
+
+    await expect(
+      service.generate('question', [buildResult()]),
+    ).rejects.toBeInstanceOf(PromptTokenLimitExceededError);
+    expect(generate).not.toHaveBeenCalled();
+  });
+
+  it('attaches real usage and computed cost to the result metadata when the provider reports usage', async () => {
+    const generate = jest.fn().mockResolvedValue({
+      text: 'The answer is X [S1].',
+      usage: { inputTokens: 100, outputTokens: 200, totalTokens: 300 },
+    });
+    const config = buildConfig({
+      inputPricePerMillionTokens: 0.75,
+      outputPricePerMillionTokens: 3.75,
+    });
+    const service = buildService(
+      {
+        metadata: { provider: 'google', model: 'gemini-3.6-flash' },
+        generate,
+      },
+      config,
+    );
+
+    const result = await service.generate('question', [buildResult()]);
+
+    expect(result.metadata.usage).toEqual({
+      inputTokens: 100,
+      outputTokens: 200,
+      totalTokens: 300,
+    });
+    expect(result.metadata.costUsd).toBeCloseTo(
+      (100 / 1_000_000) * 0.75 + (200 / 1_000_000) * 3.75,
+      10,
+    );
+  });
+
+  it('omits usage and cost from the result metadata when the provider reports no usage', async () => {
+    const generate = jest
+      .fn()
+      .mockResolvedValue({ text: 'The answer is X [S1].' });
+    const service = buildService({
+      metadata: { provider: 'google', model: 'gemini-3.6-flash' },
+      generate,
+    });
+
+    const result = await service.generate('question', [buildResult()]);
+
+    expect(result.metadata.usage).toBeUndefined();
+    expect(result.metadata.costUsd).toBeUndefined();
   });
 });

@@ -12,11 +12,13 @@ import {
   GenerationProviderError,
   LlmResponseValidationError,
   PermanentLlmProviderError,
+  PromptTokenLimitExceededError,
   RateLimitLlmProviderError,
   TransientLlmProviderError,
 } from './llm.errors';
 import { LlmConfigService } from './llm-config.service';
 import { LLM_PROVIDER_PORT, type LlmProviderPort } from './llm-provider.port';
+import { calculateCostUsd, estimateTokenCount } from './token-usage.util';
 
 export const INSUFFICIENT_CONTEXT_ANSWER =
   "I couldn't find enough relevant information in the Docker documentation to answer this question reliably.";
@@ -63,6 +65,24 @@ export class GenerationService {
 
     const prompt = await this.promptBuilder.build(question, selection.chunks);
 
+    const estimatedPromptTokens = estimateTokenCount(
+      prompt.systemPrompt + prompt.userPrompt,
+    );
+    if (estimatedPromptTokens > this.config.maxPromptTokens) {
+      this.logger.warn(
+        {
+          queryId,
+          estimatedPromptTokens,
+          limit: this.config.maxPromptTokens,
+        },
+        'Prompt token limit exceeded',
+      );
+      throw new PromptTokenLimitExceededError(
+        estimatedPromptTokens,
+        this.config.maxPromptTokens,
+      );
+    }
+
     try {
       const response = await withRetry(() => this.invokeWithTimeout(prompt), {
         maxAttempts: this.config.maxRetries,
@@ -78,16 +98,34 @@ export class GenerationService {
 
       const sources = extractCitations(response.text, selection.chunks);
 
+      const costUsd = response.usage
+        ? calculateCostUsd(response.usage, {
+            inputPricePerMillionTokens: this.config.inputPricePerMillionTokens,
+            outputPricePerMillionTokens:
+              this.config.outputPricePerMillionTokens,
+          })
+        : undefined;
+
       this.logger.info(
         {
           queryId,
           durationMs: Date.now() - startedAt,
           sourceCount: sources.length,
+          usage: response.usage,
+          costUsd,
         },
         'Generation completed',
       );
 
-      return { answer: response.text, sources, metadata };
+      return {
+        answer: response.text,
+        sources,
+        metadata: {
+          ...metadata,
+          ...(response.usage ? { usage: response.usage } : {}),
+          ...(costUsd !== undefined ? { costUsd } : {}),
+        },
+      };
     } catch (err) {
       const classification = this.classify(err);
       this.logger.error(
