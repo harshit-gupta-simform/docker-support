@@ -11,7 +11,7 @@ function buildModule(overrides: Partial<EnvConfig> = {}) {
     EMBEDDING_DIMENSIONS: 1024,
     EMBEDDING_API_KEY: '',
     EMBEDDING_BASE_URL: '',
-    EMBEDDING_BATCH_SIZE: 128,
+    EMBEDDING_BATCH_SIZE: 100,
     EMBEDDING_MAX_CONCURRENT_BATCHES: 5,
     EMBEDDING_MAX_RETRIES: 5,
     EMBEDDING_RETRY_BASE_DELAY_MS: 500,
@@ -48,7 +48,7 @@ describe('EmbeddingConfigService', () => {
     expect(config.dimensions).toBe(1024);
     expect(config.apiKey).toBe('');
     expect(config.baseUrl).toBe('');
-    expect(config.batchSize).toBe(128);
+    expect(config.batchSize).toBe(100);
     expect(config.maxConcurrentBatches).toBe(5);
     expect(config.maxRetries).toBe(5);
     expect(config.retryBaseDelayMs).toBe(500);

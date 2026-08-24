@@ -46,7 +46,14 @@ export const envSchema = z
     EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(1024),
     EMBEDDING_API_KEY: z.string().default(''),
     EMBEDDING_BASE_URL: z.string().default(''),
-    EMBEDDING_BATCH_SIZE: z.coerce.number().int().positive().default(128),
+    // Capped at 100 — Google's batchEmbedContents API rejects any batch
+    // larger than 100 requests with a 400 (confirmed against the real API).
+    EMBEDDING_BATCH_SIZE: z.coerce
+      .number()
+      .int()
+      .positive()
+      .max(100)
+      .default(100),
     EMBEDDING_MAX_CONCURRENT_BATCHES: z.coerce
       .number()
       .int()
