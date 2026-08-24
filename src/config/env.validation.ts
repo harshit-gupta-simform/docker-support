@@ -160,6 +160,15 @@ export const envSchema = z
     LLM_MIN_RETRIEVAL_SCORE: z.coerce.number().min(0).default(0),
     LLM_MAX_CONTEXT_CHARS: z.coerce.number().int().positive().default(12000),
     LLM_THINKING_LEVEL: z.enum(['', 'LOW', 'MEDIUM', 'HIGH']).default(''),
+    LLM_MAX_PROMPT_TOKENS: z.coerce.number().int().positive().default(8000),
+    LLM_INPUT_PRICE_PER_1M_TOKENS: z.coerce
+      .number()
+      .nonnegative()
+      .default(0.75),
+    LLM_OUTPUT_PRICE_PER_1M_TOKENS: z.coerce
+      .number()
+      .nonnegative()
+      .default(3.75),
   })
   .refine(
     (config) => config.CHUNKING_MIN_CHUNK_SIZE < config.CHUNKING_MAX_CHUNK_SIZE,

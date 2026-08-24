@@ -68,6 +68,9 @@ describe('validateEnv', () => {
       LLM_MIN_RETRIEVAL_SCORE: 0,
       LLM_MAX_CONTEXT_CHARS: 12000,
       LLM_THINKING_LEVEL: '',
+      LLM_MAX_PROMPT_TOKENS: 8000,
+      LLM_INPUT_PRICE_PER_1M_TOKENS: 0.75,
+      LLM_OUTPUT_PRICE_PER_1M_TOKENS: 3.75,
     });
   });
 
@@ -135,6 +138,9 @@ describe('validateEnv', () => {
       LLM_MIN_RETRIEVAL_SCORE: '0.4',
       LLM_MAX_CONTEXT_CHARS: '9000',
       LLM_THINKING_LEVEL: 'LOW',
+      LLM_MAX_PROMPT_TOKENS: '4000',
+      LLM_INPUT_PRICE_PER_1M_TOKENS: '1.5',
+      LLM_OUTPUT_PRICE_PER_1M_TOKENS: '7.5',
     });
 
     expect(result).toEqual({
@@ -201,6 +207,9 @@ describe('validateEnv', () => {
       LLM_MIN_RETRIEVAL_SCORE: 0.4,
       LLM_MAX_CONTEXT_CHARS: 9000,
       LLM_THINKING_LEVEL: 'LOW',
+      LLM_MAX_PROMPT_TOKENS: 4000,
+      LLM_INPUT_PRICE_PER_1M_TOKENS: 1.5,
+      LLM_OUTPUT_PRICE_PER_1M_TOKENS: 7.5,
     });
   });
 

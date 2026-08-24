@@ -16,6 +16,9 @@ function buildModule(overrides: Partial<EnvConfig> = {}) {
     LLM_MIN_RETRIEVAL_SCORE: 0,
     LLM_MAX_CONTEXT_CHARS: 12000,
     LLM_THINKING_LEVEL: '',
+    LLM_MAX_PROMPT_TOKENS: 8000,
+    LLM_INPUT_PRICE_PER_1M_TOKENS: 0.75,
+    LLM_OUTPUT_PRICE_PER_1M_TOKENS: 3.75,
   };
   return Test.createTestingModule({
     providers: [
@@ -44,6 +47,9 @@ describe('LlmConfigService', () => {
       LLM_MIN_RETRIEVAL_SCORE: 0.3,
       LLM_MAX_CONTEXT_CHARS: 8000,
       LLM_THINKING_LEVEL: 'LOW',
+      LLM_MAX_PROMPT_TOKENS: 4000,
+      LLM_INPUT_PRICE_PER_1M_TOKENS: 1.5,
+      LLM_OUTPUT_PRICE_PER_1M_TOKENS: 7.5,
     });
     const config = moduleRef.get(LlmConfigService);
 
@@ -58,5 +64,8 @@ describe('LlmConfigService', () => {
     expect(config.minRetrievalScore).toBe(0.3);
     expect(config.maxContextChars).toBe(8000);
     expect(config.thinkingLevel).toBe('LOW');
+    expect(config.maxPromptTokens).toBe(4000);
+    expect(config.inputPricePerMillionTokens).toBe(1.5);
+    expect(config.outputPricePerMillionTokens).toBe(7.5);
   });
 });

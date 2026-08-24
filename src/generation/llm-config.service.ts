@@ -49,4 +49,20 @@ export class LlmConfigService {
   get thinkingLevel(): EnvConfig['LLM_THINKING_LEVEL'] {
     return this.configService.get('LLM_THINKING_LEVEL', { infer: true });
   }
+
+  get maxPromptTokens(): number {
+    return this.configService.get('LLM_MAX_PROMPT_TOKENS', { infer: true });
+  }
+
+  get inputPricePerMillionTokens(): number {
+    return this.configService.get('LLM_INPUT_PRICE_PER_1M_TOKENS', {
+      infer: true,
+    });
+  }
+
+  get outputPricePerMillionTokens(): number {
+    return this.configService.get('LLM_OUTPUT_PRICE_PER_1M_TOKENS', {
+      infer: true,
+    });
+  }
 }

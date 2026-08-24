@@ -46,3 +46,15 @@ export class GenerationProviderError extends Error {
     this.name = 'GenerationProviderError';
   }
 }
+
+export class PromptTokenLimitExceededError extends Error {
+  constructor(
+    public readonly estimatedTokens: number,
+    public readonly limit: number,
+  ) {
+    super(
+      `Estimated prompt size (${estimatedTokens} tokens) exceeds the configured limit of ${limit} tokens`,
+    );
+    this.name = 'PromptTokenLimitExceededError';
+  }
+}
