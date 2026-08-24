@@ -11,9 +11,16 @@ import {
   RateLimitLlmProviderError,
   TransientLlmProviderError,
 } from '../llm.errors';
+import { TokenUsage } from '../token-usage.util';
 
 interface MessageContentPart {
   text?: string;
+}
+
+interface RawUsageMetadata {
+  input_tokens?: unknown;
+  output_tokens?: unknown;
+  total_tokens?: unknown;
 }
 
 export class LangChainGoogleGenerativeAiProvider implements LlmProviderPort {
@@ -35,7 +42,11 @@ export class LangChainGoogleGenerativeAiProvider implements LlmProviderPort {
         : {}),
     });
 
-    let response: { content: unknown; response_metadata?: unknown };
+    let response: {
+      content: unknown;
+      response_metadata?: unknown;
+      usage_metadata?: unknown;
+    };
     try {
       response = await chatModel.invoke([
         ['system', request.systemPrompt],
@@ -59,7 +70,28 @@ export class LangChainGoogleGenerativeAiProvider implements LlmProviderPort {
       throw new LlmResponseValidationError('Gemini returned an empty response');
     }
 
-    return { text };
+    const usage = this.extractUsage(response.usage_metadata);
+
+    return { text, ...(usage ? { usage } : {}) };
+  }
+
+  private extractUsage(raw: unknown): TokenUsage | undefined {
+    if (typeof raw !== 'object' || raw === null) {
+      return undefined;
+    }
+    const candidate = raw as RawUsageMetadata;
+    if (
+      typeof candidate.input_tokens !== 'number' ||
+      typeof candidate.output_tokens !== 'number' ||
+      typeof candidate.total_tokens !== 'number'
+    ) {
+      return undefined;
+    }
+    return {
+      inputTokens: candidate.input_tokens,
+      outputTokens: candidate.output_tokens,
+      totalTokens: candidate.total_tokens,
+    };
   }
 
   private extractText(content: unknown): string {

@@ -75,6 +75,39 @@ describe('LangChainGoogleGenerativeAiProvider', () => {
     expect(constructorArgs).not.toHaveProperty('thinkingConfig');
   });
 
+  it('maps usage_metadata into the response usage field', async () => {
+    mockInvoke.mockResolvedValue({
+      content: 'the answer',
+      response_metadata: {},
+      usage_metadata: {
+        input_tokens: 10,
+        output_tokens: 149,
+        total_tokens: 159,
+      },
+    });
+    const provider = new LangChainGoogleGenerativeAiProvider('key', metadata);
+
+    const response = await provider.generate(request);
+
+    expect(response.usage).toEqual({
+      inputTokens: 10,
+      outputTokens: 149,
+      totalTokens: 159,
+    });
+  });
+
+  it('omits usage when usage_metadata is absent from the response', async () => {
+    mockInvoke.mockResolvedValue({
+      content: 'the answer',
+      response_metadata: {},
+    });
+    const provider = new LangChainGoogleGenerativeAiProvider('key', metadata);
+
+    const response = await provider.generate(request);
+
+    expect(response.usage).toBeUndefined();
+  });
+
   it('joins array-of-parts content', async () => {
     mockInvoke.mockResolvedValue({
       content: [{ text: 'part one ' }, { text: 'part two' }],
