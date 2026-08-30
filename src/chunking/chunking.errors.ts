@@ -11,3 +11,15 @@ export class UnbalancedHeadingStructureError extends Error {
     this.name = 'UnbalancedHeadingStructureError';
   }
 }
+
+export class ChunkingThresholdExceededError extends Error {
+  constructor(
+    public readonly failedCount: number,
+    public readonly attemptedCount: number,
+  ) {
+    super(
+      `Chunking run aborted: ${failedCount}/${attemptedCount} documents failed, exceeding the 50% failure threshold`,
+    );
+    this.name = 'ChunkingThresholdExceededError';
+  }
+}

@@ -4,6 +4,7 @@ export interface RetryOptions {
   maxDelayMs: number;
   isRetryable: (err: unknown) => boolean;
   getRetryAfterMs?: (err: unknown) => number | null;
+  onRetry?: (err: unknown, attempt: number, delayMs: number) => void;
   sleep?: (ms: number) => Promise<void>;
 }
 
@@ -34,7 +35,9 @@ export async function withRetry<T>(
       // clamped to our own ceiling) — never jittered, since it isn't a
       // guess we're making, it's what the provider told us to do.
       if (retryAfterMs !== null) {
-        await sleep(Math.min(retryAfterMs, options.maxDelayMs));
+        const delayMs = Math.min(retryAfterMs, options.maxDelayMs);
+        options.onRetry?.(err, attempt, delayMs);
+        await sleep(delayMs);
         continue;
       }
 
@@ -46,6 +49,7 @@ export async function withRetry<T>(
       // retries across concurrent batches.
       const jitteredBackoff = backoff * (0.5 + Math.random() * 0.5);
 
+      options.onRetry?.(err, attempt, jitteredBackoff);
       await sleep(jitteredBackoff);
     }
   }

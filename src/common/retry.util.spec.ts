@@ -98,4 +98,26 @@ describe('withRetry', () => {
 
     expect(sleep).toHaveBeenCalledWith(100);
   });
+
+  it('invokes onRetry with the error, attempt number, and delay before sleeping', async () => {
+    const sleep = jest.fn().mockResolvedValue(undefined);
+    const onRetry = jest.fn();
+    const err = new FakeTransientError('boom');
+    const fn = jest.fn().mockRejectedValueOnce(err).mockResolvedValueOnce('ok');
+
+    await withRetry(fn, {
+      maxAttempts: 3,
+      baseDelayMs: 10,
+      maxDelayMs: 100,
+      isRetryable: (e) => e instanceof FakeTransientError,
+      sleep,
+      onRetry,
+    });
+
+    expect(onRetry).toHaveBeenCalledTimes(1);
+    expect(onRetry).toHaveBeenCalledWith(err, 1, expect.any(Number));
+    expect(sleep.mock.invocationCallOrder[0]).toBeGreaterThan(
+      onRetry.mock.invocationCallOrder[0],
+    );
+  });
 });

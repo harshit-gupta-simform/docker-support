@@ -8,39 +8,43 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { EmbeddingConfigService } from '../embedding/embedding-config.service';
+import { GenerationService } from '../generation/generation.service';
+import { GenerationResult } from '../generation/generation.types';
+import {
+  GenerationProviderError,
+  PromptTokenLimitExceededError,
+} from '../generation/llm.errors';
 import { deriveCollectionName } from '../vector-store/vector-store-collection-name.util';
 import { VectorStoreConfigService } from '../vector-store/vector-store-config.service';
+import { validateQueryText } from './query-request.validator';
 import {
   RetrievalConfigMismatchError,
   RetrievalValidationError,
 } from './retrieval.errors';
 import { RetrievalService } from './retrieval.service';
-import { RetrievalResult } from './retrieval.types';
 
 interface QueryRequestBody {
   text?: unknown;
-}
-
-interface QueryResponseBody {
-  collection: string;
-  count: number;
-  results: RetrievalResult[];
 }
 
 @Controller()
 export class RetrievalController {
   constructor(
     private readonly retrieval: RetrievalService,
+    private readonly generation: GenerationService,
     private readonly vectorStoreConfig: VectorStoreConfigService,
     private readonly embeddingConfig: EmbeddingConfigService,
   ) {}
 
   @Post('query')
   @HttpCode(HttpStatus.OK)
-  async query(@Body() body: QueryRequestBody): Promise<QueryResponseBody> {
-    if (typeof body?.text !== 'string' || body.text.trim().length === 0) {
+  async query(@Body() body: QueryRequestBody): Promise<GenerationResult> {
+    let text: string;
+    try {
+      text = validateQueryText(body?.text);
+    } catch (err) {
       throw new BadRequestException(
-        '"text" is required and must be a non-empty string',
+        err instanceof Error ? err.message : 'Invalid request',
       );
     }
 
@@ -54,15 +58,21 @@ export class RetrievalController {
 
     try {
       const results = await this.retrieval.retrieve(
-        { text: body.text, domain: this.vectorStoreConfig.domain },
+        { text, domain: this.vectorStoreConfig.domain },
         collection,
       );
-      return { collection, count: results.length, results };
+      return await this.generation.generate(text, results);
     } catch (err) {
       if (err instanceof RetrievalValidationError) {
         throw new BadRequestException(err.message);
       }
-      if (err instanceof RetrievalConfigMismatchError) {
+      if (err instanceof PromptTokenLimitExceededError) {
+        throw new BadRequestException(err.message);
+      }
+      if (
+        err instanceof RetrievalConfigMismatchError ||
+        err instanceof GenerationProviderError
+      ) {
         throw new ServiceUnavailableException(err.message);
       }
       throw err;

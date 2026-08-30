@@ -1,9 +1,10 @@
-import { mkdtemp, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { StructuredDocument } from '../ingestion/ingestion.types';
 import { ChunkAssemblerService } from './chunk-assembler.service';
 import { ChunkingConfigService } from './chunking-config.service';
+import { ChunkingThresholdExceededError } from './chunking.errors';
 import { ChunkingPipelineService } from './chunking-pipeline.service';
 import { ApproxTokenLengthMeasurer } from './length-measurer';
 import { MarkdownSectionParserService } from './markdown-section-parser.service';
@@ -165,5 +166,90 @@ describe('ChunkingPipelineService', () => {
 
     const files = await readdir(outputDir);
     expect(files).toContain('doc1.chunks.json');
+  });
+
+  describe('run', () => {
+    let inputDir: string;
+
+    beforeEach(async () => {
+      inputDir = await mkdtemp(join(tmpdir(), 'chunking-pipeline-input-'));
+    });
+
+    afterEach(async () => {
+      await rm(inputDir, { recursive: true, force: true });
+    });
+
+    async function writeDocument(
+      fileName: string,
+      document: StructuredDocument,
+    ): Promise<void> {
+      await writeFile(
+        join(inputDir, fileName),
+        JSON.stringify(document),
+        'utf-8',
+      );
+    }
+
+    it('reads a directory and calls chunk() once per .json file found', async () => {
+      const service = buildService();
+      await writeDocument('doc1.json', buildDocument('# Title\n\nBody one.'));
+      await writeDocument('doc2.json', buildDocument('# Title\n\nBody two.'));
+      await writeFile(join(inputDir, 'notes.txt'), 'ignore me', 'utf-8');
+
+      const result = await service.run(inputDir);
+
+      expect(result.totalDocuments).toBe(2);
+      expect(result.succeeded).toBe(2);
+      expect(result.failed).toBe(0);
+      expect(result.failures).toEqual([]);
+      expect(result.outputDir).toBe(outputDir);
+
+      const outputFiles = await readdir(outputDir);
+      expect(outputFiles).toContain('doc1.chunks.json');
+    });
+
+    it('isolates a single bad file (malformed JSON) without aborting the run', async () => {
+      const service = buildService();
+      await writeDocument('doc1.json', buildDocument('# Title\n\nBody one.'));
+      await writeFile(join(inputDir, 'doc2.json'), '{ not valid json', 'utf-8');
+
+      const result = await service.run(inputDir);
+
+      expect(result.totalDocuments).toBe(2);
+      expect(result.succeeded).toBe(1);
+      expect(result.failed).toBe(1);
+      expect(result.failures).toEqual([
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- expect.any() is typed `any` by @types/jest
+        { documentId: 'doc2', message: expect.any(String) },
+      ]);
+    });
+
+    it('aborts with ChunkingThresholdExceededError when more than half the files fail', async () => {
+      const service = buildService();
+      await writeDocument('doc1.json', buildDocument('# Title\n\nBody one.'));
+      await writeFile(join(inputDir, 'doc2.json'), '{ bad', 'utf-8');
+      await writeFile(join(inputDir, 'doc3.json'), '{ bad too', 'utf-8');
+
+      await expect(service.run(inputDir)).rejects.toThrow(
+        ChunkingThresholdExceededError,
+      );
+    });
+
+    it('returns the correct summary shape on full success', async () => {
+      const service = buildService();
+      await writeDocument('doc1.json', buildDocument('# Title\n\nBody one.'));
+
+      const result = await service.run(inputDir);
+
+      expect(result).toEqual({
+        totalDocuments: 1,
+        succeeded: 1,
+        failed: 0,
+        failures: [],
+        outputDir,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- expect.any() is typed `any` by @types/jest
+        durationMs: expect.any(Number),
+      });
+    });
   });
 });

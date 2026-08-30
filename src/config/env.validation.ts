@@ -46,7 +46,14 @@ export const envSchema = z
     EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(1024),
     EMBEDDING_API_KEY: z.string().default(''),
     EMBEDDING_BASE_URL: z.string().default(''),
-    EMBEDDING_BATCH_SIZE: z.coerce.number().int().positive().default(128),
+    // Capped at 100 — Google's batchEmbedContents API rejects any batch
+    // larger than 100 requests with a 400 (confirmed against the real API).
+    EMBEDDING_BATCH_SIZE: z.coerce
+      .number()
+      .int()
+      .positive()
+      .max(100)
+      .default(100),
     EMBEDDING_MAX_CONCURRENT_BATCHES: z.coerce
       .number()
       .int()
@@ -149,6 +156,26 @@ export const envSchema = z
       .positive()
       .default(10000),
     RETRIEVAL_MAX_RETRIES: z.coerce.number().int().positive().default(2),
+    LLM_PROVIDER: z.enum(['google', 'fake']).default('google'),
+    LLM_MODEL: z.string().min(1).default('gemini-3.6-flash'),
+    LLM_API_KEY: z.string().default(''),
+    LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
+    LLM_MAX_RETRIES: z.coerce.number().int().positive().default(2),
+    LLM_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(1024),
+    LLM_TEMPERATURE: z.coerce.number().min(0).max(2).default(0.2),
+    LLM_MAX_CONTEXT_CHUNKS: z.coerce.number().int().positive().default(5),
+    LLM_MIN_RETRIEVAL_SCORE: z.coerce.number().min(0).default(0),
+    LLM_MAX_CONTEXT_CHARS: z.coerce.number().int().positive().default(12000),
+    LLM_THINKING_LEVEL: z.enum(['', 'LOW', 'MEDIUM', 'HIGH']).default(''),
+    LLM_MAX_PROMPT_TOKENS: z.coerce.number().int().positive().default(8000),
+    LLM_INPUT_PRICE_PER_1M_TOKENS: z.coerce
+      .number()
+      .nonnegative()
+      .default(0.75),
+    LLM_OUTPUT_PRICE_PER_1M_TOKENS: z.coerce
+      .number()
+      .nonnegative()
+      .default(3.75),
   })
   .refine(
     (config) => config.CHUNKING_MIN_CHUNK_SIZE < config.CHUNKING_MAX_CHUNK_SIZE,
