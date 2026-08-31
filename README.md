@@ -1,6 +1,6 @@
 # Docker Support — RAG Platform API
 
-A Retrieval-Augmented Generation platform, built with NestJS, TypeScript, and pnpm, that answers Docker documentation questions grounded in the real Docker docs. The first knowledge domain is Docker Official Documentation; see [`docs/architecture/rag-platform-architecture.md`](./docs/architecture/rag-platform-architecture.md) for the full platform architecture.
+A Retrieval-Augmented Generation platform, built with NestJS, TypeScript, and pnpm, that answers Docker documentation questions grounded in the real Docker docs. The first knowledge domain is Docker Official Documentation; see [`docs/architecture/rag-platform-architecture.md`](./docs/architecture/rag-platform-architecture.md) for the full platform architecture, or [`PROJECT_OVERVIEW.md`](./PROJECT_OVERVIEW.md) for a short, non-technical summary.
 
 The pipeline is a sequence of CLI stages (ingest → chunk → embed → index) that populate a Qdrant vector store from a ZIP of Markdown docs, plus a live HTTP endpoint (`POST /query`) that retrieves relevant chunks and generates a cited, grounded answer via Google Gemini (LangChain). Retrieval never calls the LLM when there isn't enough grounded context, and every answer's citations are validated against the chunks actually retrieved — never fabricated.
 
